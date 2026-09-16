@@ -1,0 +1,107 @@
+services:
+  # Docker 1: central control gateway. It is the only six-stack service that
+  # calls the current CrazySwarm FastAPI service.
+  drone-control:
+    build:
+      context: .
+      target: control
+      args:
+        SERVICE: drone_control
+    network_mode: host
+    env_file: .env
+    environment:
+      # Host networking, so this is the port on the host itself.
+      PORT: 8001
+      DRONE_MODE: ${DRONE_MODE:-crazyswarm}
+      CRAZYSWARM_API_URL: ${CRAZYSWARM_API_URL:-http://127.0.0.1:8011}
+      CRAZYSWARM_API_KEY: ${CRAZYSWARM_API_KEY:-}
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+
+  # Docker 2: Hungarian assignment.
+  hungarian:
+    build:
+      context: .
+      target: runtime
+      args:
+        SERVICE: hungarian
+    ports:
+      - "8002:8000"
+
+  # Docker 3: formation generator.
+  formation:
+    build:
+      context: .
+      target: runtime
+      args:
+        SERVICE: formation
+    ports:
+      - "8003:8000"
+
+  # Docker 4: mission orchestration. It only calls Docker 1 over HTTP.
+  mission:
+    build:
+      context: .
+      target: runtime
+      args:
+        SERVICE: mission
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file: .env
+    environment:
+      DRONE_CONTROL_URL: http://host.docker.internal:8001
+      FORMATION_SERVICE_URL: http://formation:8000
+      HUNGARIAN_SERVICE_URL: http://hungarian:8000
+      MISSION_AUTO_START: ${MISSION_AUTO_START:-1}
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    depends_on:
+      - drone-control
+      - formation
+      - hungarian
+    ports:
+      - "8004:8000"
+
+  # Docker 5: calls Docker 4, which calls Docker 1.
+  downed-simulator:
+    build:
+      context: .
+      target: runtime
+      args:
+        SERVICE: downed_simulator
+    env_file: .env
+    environment:
+      MISSION_SERVICE_URL: http://mission:8000
+      AUTO_DOWN_IDS: ${AUTO_DOWN_IDS:-}
+      AUTO_DOWN_COUNT: ${AUTO_DOWN_COUNT:-}
+      AUTO_DOWN_AFTER_SEC: ${AUTO_DOWN_AFTER_SEC:-0}
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    depends_on:
+      - mission
+    ports:
+      - "8005:8000"
+
+  # Docker 6: OpenCV visualizer. It polls Docker 1 /states_vis.
+  visualizer:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    profiles: ["visualizer"]
+    build:
+      context: .
+      target: desktop
+      args:
+        SERVICE: visualizer
+    environment:
+      DRONE_CONTROL_URL: http://host.docker.internal:8001
+      DISPLAY: ${DISPLAY:-}
+      VIS_WIDTH: ${VIS_WIDTH:-900}
+      VIS_HEIGHT: ${VIS_HEIGHT:-700}
+      VIS_SCALE: ${VIS_SCALE:-500.0}
+      VIS_FPS: ${VIS_FPS:-5.0}
+      SAFETY_GAP: ${SAFETY_GAP:-0.25}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ./artefacts:/app/artefacts
+    depends_on:
+      - drone-control

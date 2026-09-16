@@ -1,0 +1,2 @@
+# Keeps artefacts/ in the repo: docker-compose mounts it into Docker 6.
+# Without it, Docker creates the directory as root on first run.

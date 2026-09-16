@@ -1,0 +1,15 @@
+# Local, machine-specific configuration. Copy the .example files on a new machine:
+#   cp .env.example .env && cp config.example.yaml config.yaml
+.env
+config.yaml
+
+# Backups written by scripts/swarm_config.py
+*.bak
+
+# Visualizer frames, mounted into Docker 6.
+artefacts/*
+!artefacts/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]

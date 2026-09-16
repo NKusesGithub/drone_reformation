@@ -1,0 +1,7 @@
+-r base.txt
+# numpy is pinned below 2.0 because the vendored AirSim client needs it.
+numpy==1.26.4
+PyYAML==6.0.2
+requests==2.32.3
+# Only used by the legacy DRONE_MODE=airsim backend.
+msgpack-rpc-python==0.4.1

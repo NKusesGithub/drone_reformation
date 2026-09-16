@@ -1,0 +1,4 @@
+-r base.txt
+numpy==2.2.1
+PyYAML==6.0.2
+requests==2.32.3

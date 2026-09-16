@@ -1,0 +1,5 @@
+-r base.txt
+# drone_common.config reads config.yaml, so PyYAML is a direct dependency
+# rather than something inherited from uvicorn[standard].
+PyYAML==6.0.2
+requests==2.32.3
