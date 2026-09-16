@@ -4,14 +4,10 @@ services:
   drone-control:
     build:
       context: .
-      target: control
-      args:
-        SERVICE: drone_control
+      dockerfile: docker/control.Dockerfile
     network_mode: host
     env_file: .env
     environment:
-      # Host networking, so this is the port on the host itself.
-      PORT: 8001
       DRONE_MODE: ${DRONE_MODE:-crazyswarm}
       CRAZYSWARM_API_URL: ${CRAZYSWARM_API_URL:-http://127.0.0.1:8011}
       CRAZYSWARM_API_KEY: ${CRAZYSWARM_API_KEY:-}
@@ -22,9 +18,7 @@ services:
   hungarian:
     build:
       context: .
-      target: runtime
-      args:
-        SERVICE: hungarian
+      dockerfile: docker/hungarian.Dockerfile
     ports:
       - "8002:8000"
 
@@ -32,9 +26,7 @@ services:
   formation:
     build:
       context: .
-      target: runtime
-      args:
-        SERVICE: formation
+      dockerfile: docker/formation.Dockerfile
     ports:
       - "8003:8000"
 
@@ -42,9 +34,7 @@ services:
   mission:
     build:
       context: .
-      target: runtime
-      args:
-        SERVICE: mission
+      dockerfile: docker/mission.Dockerfile
     extra_hosts:
       - "host.docker.internal:host-gateway"
     env_file: .env
@@ -66,9 +56,7 @@ services:
   downed-simulator:
     build:
       context: .
-      target: runtime
-      args:
-        SERVICE: downed_simulator
+      dockerfile: docker/downed-simulator.Dockerfile
     env_file: .env
     environment:
       MISSION_SERVICE_URL: http://mission:8000
@@ -89,9 +77,7 @@ services:
     profiles: ["visualizer"]
     build:
       context: .
-      target: desktop
-      args:
-        SERVICE: visualizer
+      dockerfile: docker/visualizer.Dockerfile
     environment:
       DRONE_CONTROL_URL: http://host.docker.internal:8001
       DISPLAY: ${DISPLAY:-}
