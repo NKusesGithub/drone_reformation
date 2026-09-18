@@ -1,0 +1,4 @@
+-r base.txt
+requests==2.32.3
+# swarm_config.py re-parses its own edit as YAML before anything is written.
+PyYAML==6.0.2

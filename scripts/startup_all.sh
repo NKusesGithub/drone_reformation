@@ -8,7 +8,7 @@ BUILD=1
 DETACHED=1
 WAIT=1
 WITH_VISUALIZER=0
-SERVICES=(drone-control hungarian formation mission downed-simulator)
+SERVICES=(drone-control hungarian formation mission downed-simulator dashboard)
 
 usage() {
   cat <<'EOF'
@@ -122,10 +122,13 @@ if (( WAIT )) && (( DETACHED )); then
   wait_health "Docker 3 formation" "http://localhost:8003/health"
   wait_health "Docker 4 mission" "http://localhost:8004/health"
   wait_health "Docker 5 downed-simulator" "http://localhost:8005/health"
+  wait_health "Dashboard" "http://localhost:8006/health"
 fi
 
 cat <<EOF
 [startup] Ready.
+
+Dashboard (buttons + live status): http://localhost:8006
 
 Docker 1 drone-control:      http://localhost:8001/status
 Docker 2 hungarian:          http://localhost:8002/health

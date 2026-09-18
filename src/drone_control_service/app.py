@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import time
 from threading import RLock
 from typing import Any, Callable, Dict, Iterable, List, Optional
@@ -9,11 +8,35 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from drone_common.config import get_drone_ids, load_config
-from drone_control_service.clients import DroneClientBase, make_drone_client
+from drone_control_service.clients import (
+    AirSimDroneClient,
+    CrazySwarmApiDroneClient,
+    DroneClientBase,
+    MockDroneClient,
+    make_drone_client,
+)
 
 CONFIG = load_config()
 _DRONE_IDS = get_drone_ids(CONFIG)
 _CLIENT: DroneClientBase = make_drone_client(CONFIG)
+
+
+def _mode_of(client: DroneClientBase) -> str:
+    """The backend actually in use, not the raw DRONE_MODE text.
+
+    make_drone_client() accepts aliases (ros2, crazyflie, colosseum), so reading
+    the env var back would report e.g. "ros2" for a client that flies real drones.
+    """
+    if isinstance(client, CrazySwarmApiDroneClient):
+        return "crazyswarm"
+    if isinstance(client, MockDroneClient):
+        return "mock"
+    if isinstance(client, AirSimDroneClient):
+        return "airsim"
+    return type(client).__name__
+
+
+_MODE = _mode_of(_CLIENT)
 _LOCK = RLock()
 _LAST_COMMAND: Dict[str, Any] = {
     "command": None,
@@ -107,14 +130,17 @@ def health() -> Dict[str, Any]:
         return {
             "status": "ok",
             "service": "drone-control",
-            "mode": os.getenv("DRONE_MODE", CONFIG.get("drones", {}).get("mode", "crazyswarm")),
+            "mode": _MODE,
             "valid_drone_ids": _DRONE_IDS,
             "backend": backend,
         }
     except Exception as exc:
+        # Report the mode here too. A degraded CrazySwarm backend (bridge not up
+        # yet) is exactly when someone needs to see that real drones are wired in.
         return {
             "status": "degraded",
             "service": "drone-control",
+            "mode": _MODE,
             "valid_drone_ids": _DRONE_IDS,
             "backend_error": str(exc),
         }

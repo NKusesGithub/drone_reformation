@@ -70,6 +70,31 @@ services:
     ports:
       - "8005:8000"
 
+  # Dashboard: one web page with buttons for the common steps, at
+  # http://localhost:8006. It only forwards a fixed list of requests to Docker 1,
+  # 4 and 5. Bound to 127.0.0.1 so other machines on the network can't open it.
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/dashboard.Dockerfile
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      DRONE_CONTROL_URL: http://host.docker.internal:8001
+      MISSION_SERVICE_URL: http://mission:8000
+      DOWNED_SIMULATOR_URL: http://downed-simulator:8000
+    volumes:
+      # Read-only: the "drone IDs from CrazySwarm" button never edits this repo.
+      - ${CRAZYFLIES_DIR:-../CrazySwarm2-with-Mocap/src/crazyswarm2/crazyflie/config}:/app/crazyswarm_config:ro
+      # Writable, unlike the other services: this is the file that button updates.
+      - ./config.yaml:/app/config.yaml
+      - ./config_backups:/app/config_backups
+    depends_on:
+      - mission
+      - downed-simulator
+    ports:
+      - "127.0.0.1:8006:8000"
+
   # Docker 6: OpenCV visualizer. It polls Docker 1 /states_vis.
   visualizer:
     extra_hosts:

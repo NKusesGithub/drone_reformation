@@ -6,6 +6,9 @@ config.yaml
 # Backups written by scripts/swarm_config.py
 *.bak
 
+# Backups written by the dashboard before it updates config.yaml
+config_backups/
+
 # Visualizer frames, mounted into Docker 6.
 artefacts/*
 !artefacts/.gitkeep
@@ -13,3 +16,4 @@ artefacts/*
 # Python
 __pycache__/
 *.py[cod]
+.pytest_cache/

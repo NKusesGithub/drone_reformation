@@ -1,0 +1,41 @@
+# Every service builds with `context: .`, so without this each of the six
+# images would ship the whole repo to the daemon. What the Dockerfiles actually
+# COPY is requirements/, src/drone_common/, third_party/airsim/, and one
+# src/*_service/ package; nothing listed below is needed by any of them.
+
+.git
+.gitignore
+.dockerignore
+
+# Never bake machine-specific config or secrets into an image. Both are
+# supplied at runtime instead: config.yaml through a compose volume mount,
+# .env through env_file.
+.env
+.env.example
+config.yaml
+config.example.yaml
+
+docker-compose.yml
+docs/
+scripts/
+# ...except this one: the dashboard image reuses it for the CrazySwarm button.
+!scripts/swarm_config.py
+*.md
+
+# Visualizer frames, mounted into Docker 6 at runtime.
+artefacts/
+
+# Tests never run inside the service images.
+tests/
+pytest.ini
+requirements/dev.txt
+.pytest_cache/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Backups written by scripts/swarm_config.py
+*.bak

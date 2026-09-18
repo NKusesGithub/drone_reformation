@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drone Reformation Dashboard</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header>
+  <h1>Drone Reformation</h1>
+  <span id="mode" class="badge">mode: …</span>
+  <span id="light-control" class="light">Docker 1</span>
+  <span id="light-mission" class="light">Mission</span>
+  <span id="light-simulator" class="light">Simulator</span>
+  <span class="spacer"></span>
+  <span class="estop">Emergency stop is not on this page. Use the preflight GUI E-STOP (e).</span>
+</header>
+
+<nav class="tabs">
+  <button data-tab="status" class="active">Status</button>
+  <button data-tab="config">Config</button>
+</nav>
+
+<main>
+  <section id="tab-status" class="tab active">
+  <section class="card">
+    <h2>Mission</h2>
+    <dl class="facts">
+      <dt>Mission loop</dt><dd id="m-running">…</dd>
+      <dt>Took off</dt><dd id="m-setup">…</dd>
+      <dt>Initial formation</dt><dd id="m-initial">…</dd>
+      <dt>Downed drones</dt><dd id="m-downed">…</dd>
+      <dt>Backend</dt><dd id="m-backend">…</dd>
+    </dl>
+    <p id="mission-error" class="error" hidden></p>
+    <div class="buttons">
+      <button id="btn-start" class="primary">Start mission</button>
+      <button id="btn-stop">Stop mission loop</button>
+      <button id="btn-reform">Reform now</button>
+      <button id="btn-land" class="danger">Land all &amp; stop</button>
+    </div>
+    <p class="hint">
+      <b>Start</b> takes off and flies the first formation, then watches for lost drones.
+      <b>Stop</b> only stops watching; drones keep hovering.
+      Start after Stop does <b>not</b> take off again. For a fresh run, use
+      <code>docker compose restart mission</code>.
+    </p>
+  </section>
+
+  <section class="card">
+    <h2>Drones</h2>
+    <p id="drones-error" class="error" hidden></p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Drone</th><th>Status</th><th>x</th><th>y</th><th>z</th><th>Pose</th><th>Battery</th><th></th></tr></thead>
+        <tbody id="drones-body"></tbody>
+      </table>
+    </div>
+    <div class="row-controls">
+      <span>Down</span>
+      <input id="random-count" type="number" min="1" value="1" aria-label="How many random drones to down">
+      <button id="btn-random" class="danger">Down random</button>
+    </div>
+    <p class="hint">Downing a drone lands and disarms it. Mission then rebuilds the formation around the others.</p>
+  </section>
+
+  <section class="card">
+    <h2>Map (top-down, metres)</h2>
+    <svg id="map" viewBox="0 0 400 400" role="img" aria-label="Drone positions seen from above"></svg>
+    <div class="legend">
+      <span class="lg-idle">idle</span><span class="lg-busy">busy</span>
+      <span class="lg-down">down</span><span class="lg-target">target from last reform</span>
+    </div>
+  </section>
+
+  <section class="card wide">
+    <h2>Last reform</h2>
+    <div id="reform-summary" class="summary">…</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Order</th><th>Drone</th><th>Spot</th><th>Target x</th><th>Target y</th><th>Distance</th></tr></thead>
+        <tbody id="assign-body"></tbody>
+      </table>
+    </div>
+    <h3>How each move ended</h3>
+    <p id="move-note" class="hint"></p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Drone</th><th>Result</th><th>Steps</th><th>Blocked</th><th>Time</th><th>Reason</th></tr></thead>
+        <tbody id="move-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card wide">
+    <h2>Activity</h2>
+    <ul id="log"></ul>
+  </section>
+  </section>
+
+  <section id="tab-config" class="tab">
+  <section class="card wide">
+    <h2>Drone parameters</h2>
+    <p class="filemeta" id="params-path">…</p>
+    <p id="params-warning" class="warn-box" hidden></p>
+    <div class="buttons">
+      <button id="btn-params-reload">Reload</button>
+      <button id="btn-params-save" class="primary" disabled>Save changes</button>
+      <span class="hint" id="params-count" style="align-self: center; margin: 0"></span>
+    </div>
+    <div id="params-result" class="result" hidden></div>
+    <div class="params" id="params-box"></div>
+  </section>
+
+  <section class="card wide">
+    <h2>Drone IDs from CrazySwarm</h2>
+    <p class="hint" style="margin-top: 0">
+      Reads the enabled drones in <code>crazyflies.yaml</code> and writes their IDs and names into
+      <code>config.yaml</code>. The CrazySwarm repo is only read, never changed.
+    </p>
+    <div class="buttons">
+      <button id="btn-config-check">Check</button>
+      <button id="btn-config-apply" class="primary" disabled>Apply to config.yaml</button>
+    </div>
+    <p id="config-error" class="error" hidden></p>
+    <div id="config-result" hidden>
+      <p id="config-warning" class="warn-box" hidden></p>
+      <div class="summary" id="config-summary"></div>
+      <div class="row-controls">
+        <label for="config-formation">Rows, front first</label>
+        <input id="config-formation" type="text" inputmode="numeric">
+        <span id="config-formation-note" class="hint" style="margin: 0"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Radio address</th><th>Drone ID</th><th>Start position</th></tr></thead>
+          <tbody id="config-body"></tbody>
+        </table>
+      </div>
+      <h3>Changes to config.yaml</h3>
+      <pre id="config-diff" class="diff"></pre>
+    </div>
+  </section>
+
+  <section class="card wide">
+    <h2>config.yaml, as text</h2>
+    <p class="filemeta" id="raw-path">…</p>
+    <p id="raw-warning" class="warn-box" hidden></p>
+    <div class="buttons">
+      <button id="btn-raw-reload">Reload</button>
+      <button id="btn-raw-save" class="primary">Save file</button>
+    </div>
+    <div id="raw-result" class="result" hidden></div>
+    <textarea id="raw-text" spellcheck="false"></textarea>
+  </section>
+
+  <section class="card wide">
+    <h2>crazyflies.yaml (read-only)</h2>
+    <p class="filemeta" id="cf-path">…</p>
+    <pre class="diff" id="cf-text">…</pre>
+  </section>
+  </section>
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

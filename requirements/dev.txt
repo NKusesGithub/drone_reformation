@@ -1,0 +1,14 @@
+# Test dependencies. Mirrors what the pure-function services need, minus the
+# drone_control extras: nothing under tests/ imports the vendored AirSim
+# client, so the numpy<2 pin that image carries does not apply here.
+-r base.txt
+numpy==2.2.1
+scipy==1.14.1
+PyYAML==6.0.2
+requests==2.32.3
+
+# 7.0 is the floor: the suite is plain pytest, but older builds clash with a
+# pip-installed anyio's plugin. See the note in pytest.ini.
+pytest==8.3.4
+# FastAPI's TestClient, used by tests/test_dashboard.py.
+httpx==0.28.1
