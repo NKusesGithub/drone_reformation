@@ -1,7 +1,9 @@
 # Local, machine-specific configuration. Copy the .example files on a new machine:
 #   cp .env.example .env && cp config.example.yaml config.yaml
+# Anchored to the repo root: an unanchored "config.yaml" also matched, and
+# silently dropped, tests/fixtures/config.yaml.
 .env
-config.yaml
+/config.yaml
 
 # Backups written by scripts/swarm_config.py
 *.bak
