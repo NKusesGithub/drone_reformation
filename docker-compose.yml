@@ -83,6 +83,9 @@ services:
       DRONE_CONTROL_URL: http://host.docker.internal:8001
       MISSION_SERVICE_URL: http://mission:8000
       DOWNED_SIMULATOR_URL: http://downed-simulator:8000
+      HUNGARIAN_SERVICE_URL: http://hungarian:8000
+      FORMATION_SERVICE_URL: http://formation:8000
+      CRAZYSWARM_BRIDGE_URL: ${CRAZYSWARM_BRIDGE_URL:-http://host.docker.internal:8011}
     volumes:
       # Read-only: the "drone IDs from CrazySwarm" button never edits this repo.
       - ${CRAZYFLIES_DIR:-../CrazySwarm2-with-Mocap/src/crazyswarm2/crazyflie/config}:/app/crazyswarm_config:ro

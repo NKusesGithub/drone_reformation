@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 from fastapi import FastAPI, HTTPException, Request
@@ -20,6 +21,63 @@ UPSTREAMS: Dict[str, str] = {
     "mission": os.getenv("MISSION_SERVICE_URL", "http://mission:8000").rstrip("/"),
     "simulator": os.getenv("DOWNED_SIMULATOR_URL", "http://downed-simulator:8000").rstrip("/"),
 }
+
+# Checked by the debug panel only: never forwarded, and not in ALLOWED. The
+# bridge URL points at the host, not the docker network, because the
+# dashboard container does not share drone-control's network_mode: host.
+DEBUG_URLS: Dict[str, str] = {
+    "hungarian": os.getenv("HUNGARIAN_SERVICE_URL", "http://hungarian:8000").rstrip("/"),
+    "formation": os.getenv("FORMATION_SERVICE_URL", "http://formation:8000").rstrip("/"),
+    "bridge": os.getenv("CRAZYSWARM_BRIDGE_URL", "http://host.docker.internal:8011").rstrip("/"),
+}
+
+DEBUG_TIMEOUT = 2.0
+
+# (name, port, health URL). A None URL is answered locally, for the dashboard
+# itself. Order matches the brief: ports 8001 to 8006, then the bridge.
+DEBUG_TARGETS: List[Tuple[str, int, Optional[str]]] = [
+    ("drone-control", 8001, f"{UPSTREAMS['control']}/health"),
+    ("hungarian", 8002, f"{DEBUG_URLS['hungarian']}/health"),
+    ("formation", 8003, f"{DEBUG_URLS['formation']}/health"),
+    ("mission", 8004, f"{UPSTREAMS['mission']}/health"),
+    ("downed-simulator", 8005, f"{UPSTREAMS['simulator']}/health"),
+    ("dashboard", 8006, None),
+    ("crazyswarm-bridge", 8011, f"{DEBUG_URLS['bridge']}/health"),
+]
+
+# The known faults from docs/AGENT_BRIEF.md Task B, because a person cannot
+# find them without help.
+DEBUG_CHECKLIST: List[Dict[str, str]] = [
+    {
+        "symptom": "The mission /health route always answers ok, also when its worker is dead",
+        "check": "Read /status and look at running and last_error. Never rely on /health",
+    },
+    {
+        "symptom": "drone-control reports degraded",
+        "check": "The CrazySwarm bridge on 8011 is not running, or CRAZYSWARM_API_URL gives the incorrect port",
+    },
+    {
+        "symptom": "Each drone is down on the second run",
+        "check": "The bridge never clears a down mark. Start the bridge again",
+    },
+    {
+        "symptom": "The reform fails with Formation returned too few slots",
+        "check": "sum(mission.old_formation) is not equal to len(drones.ids)",
+    },
+    {
+        "symptom": "last_move gives timeout and blocked_count increases",
+        "check": "The shape of the formation has a row that repeats or that gets narrower. "
+        "Such a shape makes a drone stuck. Use [1,2], [1,2,3] or [N]",
+    },
+    {
+        "symptom": "Mission last_error gives Connection refused to hungarian",
+        "check": "A race at startup. Run docker compose restart mission",
+    },
+    {
+        "symptom": "A restart did not do the takeoff again",
+        "check": "The one-time flags never reset. Use docker compose restart mission",
+    },
+]
 
 # (method, service, path) -> timeout in seconds.
 #
@@ -145,6 +203,32 @@ async def config_apply(request: Request) -> Dict[str, Any]:
         return swarm_sync.apply(_formation_from(payload))
     except swarm_sync.SyncError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def _check_target(name: str, port: int, url: Optional[str]) -> Dict[str, Any]:
+    """Whether one service answers, for the debug panel. Never raises."""
+    if url is None:
+        return {"name": name, "port": port, "ok": True, "detail": "answering"}
+    try:
+        response = requests.request("GET", url, timeout=DEBUG_TIMEOUT)
+    except requests.RequestException as exc:
+        return {"name": name, "port": port, "ok": False, "detail": str(exc)}
+    if response.status_code >= 400:
+        return {"name": name, "port": port, "ok": False, "detail": f"HTTP {response.status_code}"}
+    return {"name": name, "port": port, "ok": True, "detail": "answering"}
+
+
+@app.get("/api/debug/status")
+async def debug_status() -> Dict[str, Any]:
+    """Which services answer, for the dashboard's debugging panel.
+
+    Declared before /api/{service}/{path}, which would otherwise swallow it:
+    "debug" is not a forwarding target in UPSTREAMS.
+    """
+    services = await asyncio.gather(
+        *(run_in_threadpool(_check_target, name, port, url) for name, port, url in DEBUG_TARGETS)
+    )
+    return {"services": list(services), "checklist": DEBUG_CHECKLIST}
 
 
 @app.api_route("/api/{service}/{path:path}", methods=["GET", "POST"])

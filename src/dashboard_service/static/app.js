@@ -471,6 +471,40 @@ async function pollHealth() {
   }
 }
 
+// ------------------------------------------------------------------ debug panel
+
+let debugChecklistLoaded = false;
+
+function renderDebug(data) {
+  const body = $("debug-services-body");
+  body.replaceChildren();
+  for (const svc of data.services || []) {
+    const detail = typeof svc.detail === "string" ? svc.detail : JSON.stringify(svc.detail);
+    body.append(el("tr", {},
+      el("td", { text: svc.name }),
+      el("td", { class: "num", text: String(svc.port) }),
+      el("td", {}, pill(svc.ok ? "ok" : "down")),
+      el("td", { text: detail })));
+  }
+
+  if (!debugChecklistLoaded && Array.isArray(data.checklist)) {
+    debugChecklistLoaded = true;
+    const clBody = $("debug-checklist-body");
+    clBody.replaceChildren();
+    for (const item of data.checklist) {
+      clBody.append(el("tr", {}, el("td", { text: item.symptom }), el("td", { text: item.check })));
+    }
+  }
+}
+
+async function pollDebug() {
+  try {
+    renderDebug(await api("GET", "debug", "/status"));
+  } catch (err) {
+    log(`Debug panel: ${err.message}`, "bad");
+  }
+}
+
 function every(ms, fn) {
   let running = false;
   const tick = async () => {
@@ -487,6 +521,7 @@ every(1000, pollDrones);
 every(1000, pollMission);
 every(2000, pollResults);
 every(3000, pollHealth);
+every(4000, pollDebug);
 log("Dashboard opened. Status refreshes every second.");
 
 // ------------------------------------------------------------------ tabs

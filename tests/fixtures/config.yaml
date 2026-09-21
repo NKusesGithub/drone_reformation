@@ -1,0 +1,52 @@
+# Config fixture for the test suite. Kept separate from config.example.yaml
+# so the suite never depends on a developer's local config.yaml. 5 drones,
+# not 9, so test_config.py can tell the two apart.
+drones:
+  ids: [1, 2, 3, 4, 5]
+  mode: mock
+  hover_z: 1.0
+  takeoff_duration: 2.0
+  land_height: 0.04
+  land_duration: 2.0
+  command_settle_seconds: 0.25
+  group_mask: 0
+  control_timeout: 300.0
+
+  vehicle_names:
+    "1": cf1
+    "2": cf2
+    "3": cf3
+    "4": cf4
+    "5": cf5
+
+  initial_positions:
+    "1": [-0.5, 0.5, 0.0]
+    "2": [0.0, 0.5, 0.0]
+    "3": [0.5, 0.5, 0.0]
+    "4": [-0.5, 0.0, 0.0]
+    "5": [0.0, 0.0, 0.0]
+
+mission:
+  old_formation: [1, 3, 1]
+  formation_spacing: 0.5
+  poll_interval: 1.0
+  anchor_policy: initial_anchor
+
+  safety_gap: 0.25
+  include_downed_in_safety: false
+  waypoint_step: 0.25
+  move_velocity: 0.5
+  target_tolerance: 0.05
+  movement_poll_interval: 0.1
+  command_timeout_margin: 3.0
+  control_ready_timeout: 120.0
+  max_move_seconds_per_drone: 120.0
+  control_timeout: 300.0
+
+  backward_penalty: 0.0
+  backward_threshold: 0.0
+
+visualizer:
+  width: 900
+  height: 700
+  scale: 500.0

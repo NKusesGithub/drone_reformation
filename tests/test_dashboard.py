@@ -143,6 +143,76 @@ def test_an_unreachable_service_is_a_502(client, calls):
 
 
 # --------------------------------------------------------------------------
+# The debug panel: which services answer, plus the known-faults checklist.
+# --------------------------------------------------------------------------
+
+
+def test_debug_status_checks_every_port_and_the_bridge(client, calls):
+    body = client.get("/api/debug/status").json()
+
+    ports = {service["name"]: service["port"] for service in body["services"]}
+    assert ports == {
+        "drone-control": 8001,
+        "hungarian": 8002,
+        "formation": 8003,
+        "mission": 8004,
+        "downed-simulator": 8005,
+        "dashboard": 8006,
+        "crazyswarm-bridge": 8011,
+    }
+    # Every non-dashboard target was actually probed, over /health.
+    checked = {call["url"] for call in calls}
+    assert checked == {
+        f"{dashboard.UPSTREAMS['control']}/health",
+        f"{dashboard.DEBUG_URLS['hungarian']}/health",
+        f"{dashboard.DEBUG_URLS['formation']}/health",
+        f"{dashboard.UPSTREAMS['mission']}/health",
+        f"{dashboard.UPSTREAMS['simulator']}/health",
+        f"{dashboard.DEBUG_URLS['bridge']}/health",
+    }
+
+
+def test_debug_status_reports_the_dashboard_itself_as_up_without_a_request(client, calls):
+    body = client.get("/api/debug/status").json()
+
+    dashboard_row = next(s for s in body["services"] if s["name"] == "dashboard")
+    assert dashboard_row["ok"] is True
+    assert all("8006" not in call["url"] for call in calls)
+
+
+def test_debug_status_marks_a_down_service(client, calls):
+    calls.reply = requests.ConnectionError("connection refused")
+
+    body = client.get("/api/debug/status").json()
+
+    for service in body["services"]:
+        if service["name"] == "dashboard":
+            assert service["ok"] is True
+        else:
+            assert service["ok"] is False
+            assert "connection refused" in service["detail"]
+
+
+def test_debug_status_marks_an_error_response_as_down(client, calls):
+    calls.reply = FakeResponse(500, text="internal error")
+
+    body = client.get("/api/debug/status").json()
+
+    control_row = next(s for s in body["services"] if s["name"] == "drone-control")
+    assert control_row["ok"] is False
+    assert control_row["detail"] == "HTTP 500"
+
+
+def test_debug_status_includes_the_known_faults_checklist(client, calls):
+    body = client.get("/api/debug/status").json()
+
+    symptoms = {item["symptom"] for item in body["checklist"]}
+    assert any("mission" in s and "/health" in s for s in symptoms)
+    assert any("degraded" in s for s in symptoms)
+    assert all("check" in item and item["check"] for item in body["checklist"])
+
+
+# --------------------------------------------------------------------------
 # The dashboard's own routes (config editing), which must not be swallowed
 # by the catch-all that forwards everything else.
 # --------------------------------------------------------------------------

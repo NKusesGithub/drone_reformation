@@ -21,6 +21,7 @@
 <nav class="tabs">
   <button data-tab="status" class="active">Status</button>
   <button data-tab="config">Config</button>
+  <button data-tab="debug">Debug</button>
 </nav>
 
 <main>
@@ -160,6 +161,30 @@
     <h2>crazyflies.yaml (read-only)</h2>
     <p class="filemeta" id="cf-path">…</p>
     <pre class="diff" id="cf-text">…</pre>
+  </section>
+  </section>
+
+  <section id="tab-debug" class="tab">
+  <section class="card wide">
+    <h2>Service status</h2>
+    <p class="hint" style="margin-top: 0">Do a check of this table first when something looks wrong.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Service</th><th>Port</th><th>Status</th><th>Detail</th></tr></thead>
+        <tbody id="debug-services-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card wide">
+    <h2>Known faults</h2>
+    <p class="hint" style="margin-top: 0">A person cannot find these without help.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Symptom</th><th>What to check</th></tr></thead>
+        <tbody id="debug-checklist-body"></tbody>
+      </table>
+    </div>
   </section>
   </section>
 </main>
