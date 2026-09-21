@@ -483,7 +483,7 @@ function renderDebug(data) {
     body.append(el("tr", {},
       el("td", { text: svc.name }),
       el("td", { class: "num", text: String(svc.port) }),
-      el("td", {}, pill(svc.ok ? "ok" : "down")),
+      el("td", {}, pill(svc.state || (svc.ok ? "ok" : "down"))),
       el("td", { text: detail })));
   }
 

@@ -22,27 +22,26 @@ UPSTREAMS: Dict[str, str] = {
     "simulator": os.getenv("DOWNED_SIMULATOR_URL", "http://downed-simulator:8000").rstrip("/"),
 }
 
-# Checked by the debug panel only: never forwarded, and not in ALLOWED. The
-# bridge URL points at the host, not the docker network, because the
-# dashboard container does not share drone-control's network_mode: host.
+# Checked by the debug panel only: never forwarded, and not in ALLOWED.
+#
+# There is deliberately no bridge URL. The bridge listens on 127.0.0.1:8011,
+# which this container cannot reach: it does not share drone-control's
+# network_mode: host. drone-control can, and reports the bridge in its own
+# /health, so the bridge row is read from there.
 DEBUG_URLS: Dict[str, str] = {
     "hungarian": os.getenv("HUNGARIAN_SERVICE_URL", "http://hungarian:8000").rstrip("/"),
     "formation": os.getenv("FORMATION_SERVICE_URL", "http://formation:8000").rstrip("/"),
-    "bridge": os.getenv("CRAZYSWARM_BRIDGE_URL", "http://host.docker.internal:8011").rstrip("/"),
 }
 
 DEBUG_TIMEOUT = 2.0
 
-# (name, port, health URL). A None URL is answered locally, for the dashboard
-# itself. Order matches the brief: ports 8001 to 8006, then the bridge.
-DEBUG_TARGETS: List[Tuple[str, int, Optional[str]]] = [
-    ("drone-control", 8001, f"{UPSTREAMS['control']}/health"),
+# Services whose /health is truthful: any answer means the service is up.
+# drone-control and mission are not in this list, because their /health
+# answers 200 while broken. They have their own checks below.
+DEBUG_PLAIN_TARGETS: List[Tuple[str, int, str]] = [
     ("hungarian", 8002, f"{DEBUG_URLS['hungarian']}/health"),
     ("formation", 8003, f"{DEBUG_URLS['formation']}/health"),
-    ("mission", 8004, f"{UPSTREAMS['mission']}/health"),
     ("downed-simulator", 8005, f"{UPSTREAMS['simulator']}/health"),
-    ("dashboard", 8006, None),
-    ("crazyswarm-bridge", 8011, f"{DEBUG_URLS['bridge']}/health"),
 ]
 
 # The known faults from docs/AGENT_BRIEF.md Task B, because a person cannot
@@ -205,30 +204,105 @@ async def config_apply(request: Request) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-def _check_target(name: str, port: int, url: Optional[str]) -> Dict[str, Any]:
-    """Whether one service answers, for the debug panel. Never raises."""
-    if url is None:
-        return {"name": name, "port": port, "ok": True, "detail": "answering"}
+def _debug_get(url: str) -> Tuple[Dict[str, Any], Optional[str]]:
+    """GET one URL for the debug panel: (JSON body, error text). Never raises."""
     try:
         response = requests.request("GET", url, timeout=DEBUG_TIMEOUT)
     except requests.RequestException as exc:
-        return {"name": name, "port": port, "ok": False, "detail": str(exc)}
+        return {}, str(exc)
     if response.status_code >= 400:
-        return {"name": name, "port": port, "ok": False, "detail": f"HTTP {response.status_code}"}
-    return {"name": name, "port": port, "ok": True, "detail": "answering"}
+        return {}, f"HTTP {response.status_code}"
+    try:
+        body = response.json()
+    except ValueError:
+        body = {}
+    return (body if isinstance(body, dict) else {}), None
+
+
+def _row(name: str, port: int, state: str, detail: str) -> Dict[str, Any]:
+    """One row of the service table.
+
+    state is "ok", "down", "degraded", "unknown" (cannot be checked from
+    here) or "unused" (not part of this backend). ok is true only for "ok".
+    """
+    return {"name": name, "port": port, "state": state, "ok": state == "ok", "detail": detail}
+
+
+def _check_plain(name: str, port: int, url: str) -> List[Dict[str, Any]]:
+    _, error = _debug_get(url)
+    if error:
+        return [_row(name, port, "down", error)]
+    return [_row(name, port, "ok", "answering")]
+
+
+def _check_mission() -> List[Dict[str, Any]]:
+    """Mission's /health answers ok even when its worker is dead, so read /status."""
+    status, error = _debug_get(f"{UPSTREAMS['mission']}/status")
+    if error:
+        return [_row("mission", 8004, "down", error)]
+    if status.get("last_error"):
+        return [_row("mission", 8004, "down", f"worker stopped: {status['last_error']}")]
+    if not status.get("running"):
+        return [_row("mission", 8004, "down",
+                     "worker not running, so nothing watches for a lost drone. Start the mission")]
+    return [_row("mission", 8004, "ok", "worker running")]
+
+
+def _check_control_and_bridge() -> List[Dict[str, Any]]:
+    """drone-control and the bridge, both from drone-control's /health.
+
+    That route answers HTTP 200 with status "degraded" when the bridge is
+    unreachable, so the body is read, not only the status code.
+    """
+    health, error = _debug_get(f"{UPSTREAMS['control']}/health")
+    if error:
+        return [
+            _row("drone-control", 8001, "down", error),
+            _row("crazyswarm-bridge", 8011, "unknown",
+                 "cannot check: only drone-control can reach the bridge"),
+        ]
+
+    mode = health.get("mode", "unknown")
+    if health.get("status") != "ok":
+        backend_error = health.get("backend_error") or f"status {health.get('status')!r}"
+        control = _row("drone-control", 8001, "degraded",
+                       f"answering, but cannot reach its {mode} backend")
+        if mode == "crazyswarm":
+            bridge = _row("crazyswarm-bridge", 8011, "down", backend_error)
+        else:
+            bridge = _row("crazyswarm-bridge", 8011, "unused", f"not used in {mode} mode")
+        return [control, bridge]
+
+    control = _row("drone-control", 8001, "ok", f"answering, {mode} mode")
+    if mode != "crazyswarm":
+        return [control, _row("crazyswarm-bridge", 8011, "unused", f"not used in {mode} mode")]
+
+    # The same rule mission's _wait_for_control_ready() uses: a missing
+    # "ready" key is fine, and only an explicit false means not ready.
+    upstream = (health.get("backend") or {}).get("upstream") or {}
+    if upstream.get("ready") is False:
+        bridge = _row("crazyswarm-bridge", 8011, "down",
+                      "answering, but not ready: it cannot see the ROS services. Is ros2 launch up?")
+    else:
+        bridge = _row("crazyswarm-bridge", 8011, "ok", "ready")
+    return [control, bridge]
 
 
 @app.get("/api/debug/status")
 async def debug_status() -> Dict[str, Any]:
-    """Which services answer, for the dashboard's debugging panel.
+    """Which services work, for the dashboard's debugging panel.
 
     Declared before /api/{service}/{path}, which would otherwise swallow it:
     "debug" is not a forwarding target in UPSTREAMS.
     """
-    services = await asyncio.gather(
-        *(run_in_threadpool(_check_target, name, port, url) for name, port, url in DEBUG_TARGETS)
-    )
-    return {"services": list(services), "checklist": DEBUG_CHECKLIST}
+    checks = [run_in_threadpool(_check_control_and_bridge), run_in_threadpool(_check_mission)]
+    checks += [run_in_threadpool(_check_plain, *target) for target in DEBUG_PLAIN_TARGETS]
+    results = await asyncio.gather(*checks)
+
+    services = [row for rows in results for row in rows]
+    services.append(_row("dashboard", 8006, "ok", "answering"))
+    services.sort(key=lambda row: row["port"])
+    return {"services": services, "checklist": DEBUG_CHECKLIST}
 
 
 @app.api_route("/api/{service}/{path:path}", methods=["GET", "POST"])

@@ -23,9 +23,11 @@ class FakeResponse:
 
 class Calls(list):
     """Forwarded requests, plus `reply`: what the fake upstream answers with
-    (a FakeResponse, or an exception to raise)."""
+    (a FakeResponse, or an exception to raise). `replies` overrides `reply`
+    for any URL that contains one of its keys."""
 
     reply: object = None
+    replies: dict
 
 
 @pytest.fixture
@@ -33,12 +35,14 @@ def calls(monkeypatch):
     """Record every request the dashboard forwards instead of sending it."""
     recorded = Calls()
     recorded.reply = FakeResponse(200, {"status": "ok"})
+    recorded.replies = {}
 
     def fake_request(method, url, json=None, timeout=None):
         recorded.append({"method": method, "url": url, "json": json, "timeout": timeout})
-        if isinstance(recorded.reply, Exception):
-            raise recorded.reply
-        return recorded.reply
+        reply = next((r for key, r in recorded.replies.items() if key in url), recorded.reply)
+        if isinstance(reply, Exception):
+            raise reply
+        return reply
 
     monkeypatch.setattr(dashboard.requests, "request", fake_request)
     return recorded
@@ -143,67 +147,159 @@ def test_an_unreachable_service_is_a_502(client, calls):
 
 
 # --------------------------------------------------------------------------
-# The debug panel: which services answer, plus the known-faults checklist.
+# The debug panel: which services work, plus the known-faults checklist.
+#
+# drone-control and mission both answer /health with HTTP 200 while broken,
+# so these tests give each URL its own reply. A single shared reply cannot
+# tell a probe that reads the right route from one that reads the wrong one.
 # --------------------------------------------------------------------------
 
+CONTROL_HEALTH = f"{dashboard.UPSTREAMS['control']}/health"
+MISSION_STATUS = f"{dashboard.UPSTREAMS['mission']}/status"
 
-def test_debug_status_checks_every_port_and_the_bridge(client, calls):
+
+def healthy(calls, mode="crazyswarm", upstream=None):
+    """Every service answering, with a running mission worker."""
+    backend = {"backend": mode, "upstream": upstream if upstream is not None else {"ready": True}}
+    calls.replies = {
+        CONTROL_HEALTH: FakeResponse(200, {"status": "ok", "mode": mode, "backend": backend}),
+        MISSION_STATUS: FakeResponse(200, {"running": True, "last_error": None}),
+    }
+
+
+def rows(client):
+    return {row["name"]: row for row in client.get("/api/debug/status").json()["services"]}
+
+
+def test_debug_status_lists_every_port_and_the_bridge(client, calls):
+    healthy(calls)
     body = client.get("/api/debug/status").json()
 
-    ports = {service["name"]: service["port"] for service in body["services"]}
-    assert ports == {
-        "drone-control": 8001,
-        "hungarian": 8002,
-        "formation": 8003,
-        "mission": 8004,
-        "downed-simulator": 8005,
-        "dashboard": 8006,
-        "crazyswarm-bridge": 8011,
-    }
-    # Every non-dashboard target was actually probed, over /health.
-    checked = {call["url"] for call in calls}
-    assert checked == {
-        f"{dashboard.UPSTREAMS['control']}/health",
+    ports = [(row["name"], row["port"]) for row in body["services"]]
+    assert ports == [
+        ("drone-control", 8001),
+        ("hungarian", 8002),
+        ("formation", 8003),
+        ("mission", 8004),
+        ("downed-simulator", 8005),
+        ("dashboard", 8006),
+        ("crazyswarm-bridge", 8011),
+    ]
+
+
+def test_debug_status_reads_the_routes_that_tell_the_truth(client, calls):
+    healthy(calls)
+    client.get("/api/debug/status")
+
+    assert {call["url"] for call in calls} == {
+        CONTROL_HEALTH,
+        MISSION_STATUS,  # not /health: it answers ok with a dead worker
         f"{dashboard.DEBUG_URLS['hungarian']}/health",
         f"{dashboard.DEBUG_URLS['formation']}/health",
-        f"{dashboard.UPSTREAMS['mission']}/health",
         f"{dashboard.UPSTREAMS['simulator']}/health",
-        f"{dashboard.DEBUG_URLS['bridge']}/health",
     }
+    # The bridge listens on 127.0.0.1, which this container cannot reach, so
+    # it is never probed directly: its row comes from drone-control.
+    assert all(":8011" not in call["url"] for call in calls)
 
 
 def test_debug_status_reports_the_dashboard_itself_as_up_without_a_request(client, calls):
-    body = client.get("/api/debug/status").json()
-
-    dashboard_row = next(s for s in body["services"] if s["name"] == "dashboard")
-    assert dashboard_row["ok"] is True
+    healthy(calls)
+    assert rows(client)["dashboard"]["state"] == "ok"
     assert all("8006" not in call["url"] for call in calls)
 
 
-def test_debug_status_marks_a_down_service(client, calls):
+def test_a_healthy_stack_is_all_ok(client, calls):
+    healthy(calls)
+    assert {name: row["state"] for name, row in rows(client).items()} == {
+        "drone-control": "ok",
+        "hungarian": "ok",
+        "formation": "ok",
+        "mission": "ok",
+        "downed-simulator": "ok",
+        "dashboard": "ok",
+        "crazyswarm-bridge": "ok",
+    }
+
+
+def test_the_18_september_incident_shows_red_where_it_was_broken(client, calls):
+    # The bridge was gone. drone-control still answered /health with HTTP 200,
+    # and mission's /health still said ok, but its worker had died.
+    refused = "Connection refused to 127.0.0.1:8011"
+    calls.replies = {
+        CONTROL_HEALTH: FakeResponse(200, {"status": "degraded", "mode": "crazyswarm",
+                                           "backend_error": refused}),
+        MISSION_STATUS: FakeResponse(200, {"running": False,
+                                           "last_error": f"RuntimeError: {refused}"}),
+    }
+
+    table = rows(client)
+
+    assert table["drone-control"]["state"] == "degraded"
+    assert table["drone-control"]["ok"] is False
+    assert table["crazyswarm-bridge"]["state"] == "down"
+    assert refused in table["crazyswarm-bridge"]["detail"]
+    assert table["mission"]["state"] == "down"
+    assert refused in table["mission"]["detail"]
+
+
+def test_a_mission_worker_that_never_started_is_down(client, calls):
+    healthy(calls)
+    calls.replies[MISSION_STATUS] = FakeResponse(200, {"running": False, "last_error": None})
+
+    mission = rows(client)["mission"]
+    assert mission["state"] == "down"
+    assert "not running" in mission["detail"]
+
+
+def test_a_bridge_that_answers_but_is_not_ready_is_down(client, calls):
+    healthy(calls, upstream={"ready": False, "status": "initializing"})
+
+    bridge = rows(client)["crazyswarm-bridge"]
+    assert bridge["state"] == "down"
+    assert "not ready" in bridge["detail"]
+
+
+def test_a_bridge_health_without_a_ready_key_is_ok(client, calls):
+    # Mission's own readiness rule: only an explicit false blocks it.
+    healthy(calls, upstream={"status": "ok"})
+    assert rows(client)["crazyswarm-bridge"]["state"] == "ok"
+
+
+@pytest.mark.parametrize("mode", ["mock", "airsim"])
+def test_the_bridge_is_unused_outside_crazyswarm_mode(client, calls, mode):
+    healthy(calls, mode=mode)
+
+    bridge = rows(client)["crazyswarm-bridge"]
+    assert bridge["state"] == "unused"
+    assert bridge["ok"] is False
+    assert mode in bridge["detail"]
+
+
+def test_everything_unreachable_is_down_and_the_bridge_is_unknown(client, calls):
     calls.reply = requests.ConnectionError("connection refused")
 
-    body = client.get("/api/debug/status").json()
+    table = rows(client)
 
-    for service in body["services"]:
-        if service["name"] == "dashboard":
-            assert service["ok"] is True
-        else:
-            assert service["ok"] is False
-            assert "connection refused" in service["detail"]
+    assert table["dashboard"]["state"] == "ok"
+    assert table["crazyswarm-bridge"]["state"] == "unknown"
+    for name, row in table.items():
+        if name not in {"dashboard", "crazyswarm-bridge"}:
+            assert row["state"] == "down", name
+            assert "connection refused" in row["detail"]
 
 
-def test_debug_status_marks_an_error_response_as_down(client, calls):
-    calls.reply = FakeResponse(500, text="internal error")
+def test_an_error_response_is_down(client, calls):
+    healthy(calls)
+    calls.replies[CONTROL_HEALTH] = FakeResponse(500, text="internal error")
 
-    body = client.get("/api/debug/status").json()
-
-    control_row = next(s for s in body["services"] if s["name"] == "drone-control")
-    assert control_row["ok"] is False
-    assert control_row["detail"] == "HTTP 500"
+    control = rows(client)["drone-control"]
+    assert control["state"] == "down"
+    assert control["detail"] == "HTTP 500"
 
 
 def test_debug_status_includes_the_known_faults_checklist(client, calls):
+    healthy(calls)
     body = client.get("/api/debug/status").json()
 
     symptoms = {item["symptom"] for item in body["checklist"]}
