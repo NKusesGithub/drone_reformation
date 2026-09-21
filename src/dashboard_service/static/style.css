@@ -141,3 +141,35 @@ textarea { font: 12.5px/1.45 ui-monospace, Menlo, Consolas, monospace; width: 10
 
 .result { margin: 10px 0 12px; }
 .result .summary { margin-bottom: 8px; }
+
+/* Debug panel: clickable service rows, and the JSON detail view. */
+#debug-services-body tr { cursor: pointer; }
+#debug-services-body tr:hover td, #debug-services-body tr.selected td { background: var(--accent-bg); }
+.linklike { background: none; border: 0; padding: 0; font: inherit; font-weight: 600;
+            color: var(--accent); text-decoration: underline; cursor: pointer; }
+.detail-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.detail-head h2 { margin: 0; }
+.detail-time { color: var(--muted); font-size: 13px; margin-right: auto; }
+.j-source { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 10px; }
+.j-source-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.j-source-head h3 { margin: 0; font-size: 14px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.j-obj { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 16px; margin: 4px 0; }
+.j-obj dt { color: var(--muted); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px;
+            overflow-wrap: anywhere; }
+.j-obj dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.j-list { margin: 4px 0; padding-left: 20px; }
+.j-table { font-size: 12.5px; }
+.j-table th { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 600; white-space: nowrap; }
+.j-num { font-variant-numeric: tabular-nums; }
+.j-null { color: var(--muted); font-style: italic; }
+/* No green or red: a debug view cannot know if true is good (downed: true). */
+.j-true { color: var(--accent); font-weight: 600; }
+.j-false { color: var(--muted); font-weight: 600; }
+.j-error { color: var(--bad); overflow-wrap: anywhere; }
+.j-view details > summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+.j-raw { max-height: 420px; overflow: auto; margin: 6px 0 0; padding: 10px; font-size: 12px;
+         background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
+@media (max-width: 600px) {
+  .j-obj { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .j-obj dd { margin-bottom: 6px; }
+}

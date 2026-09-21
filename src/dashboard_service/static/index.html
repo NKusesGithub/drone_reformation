@@ -167,13 +167,24 @@
   <section id="tab-debug" class="tab">
   <section class="card wide">
     <h2>Service status</h2>
-    <p class="hint" style="margin-top: 0">Do a check of this table first when something looks wrong.</p>
+    <p class="hint" style="margin-top: 0">Do a check of this table first when something looks wrong.
+      Click a row to see the data that the service reports.</p>
     <div class="table-wrap">
       <table>
         <thead><tr><th>Service</th><th>Port</th><th>Status</th><th>Detail</th></tr></thead>
         <tbody id="debug-services-body"></tbody>
       </table>
     </div>
+  </section>
+
+  <section class="card wide" id="debug-detail" hidden>
+    <div class="detail-head">
+      <h2 id="debug-detail-title"></h2>
+      <span class="detail-time" id="debug-detail-time"></span>
+      <button type="button" id="debug-detail-refresh">Refresh</button>
+      <button type="button" id="debug-detail-close">Close</button>
+    </div>
+    <div id="debug-detail-body"></div>
   </section>
 
   <section class="card wide">

@@ -204,19 +204,24 @@ async def config_apply(request: Request) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-def _debug_get(url: str) -> Tuple[Dict[str, Any], Optional[str]]:
-    """GET one URL for the debug panel: (JSON body, error text). Never raises."""
+def _debug_fetch(url: str) -> Tuple[Any, Optional[str]]:
+    """GET one URL for the debug panel: (any JSON body, error text). Never raises."""
     try:
         response = requests.request("GET", url, timeout=DEBUG_TIMEOUT)
     except requests.RequestException as exc:
-        return {}, str(exc)
+        return None, str(exc)
     if response.status_code >= 400:
-        return {}, f"HTTP {response.status_code}"
+        return None, f"HTTP {response.status_code}"
     try:
-        body = response.json()
+        return response.json(), None
     except ValueError:
-        body = {}
-    return (body if isinstance(body, dict) else {}), None
+        return None, "the answer is not JSON"
+
+
+def _debug_get(url: str) -> Tuple[Dict[str, Any], Optional[str]]:
+    """Like _debug_fetch, for the checks that read fields: always a dict."""
+    body, error = _debug_fetch(url)
+    return (body if isinstance(body, dict) else {}), error
 
 
 def _row(name: str, port: int, state: str, detail: str) -> Dict[str, Any]:
@@ -286,6 +291,65 @@ def _check_control_and_bridge() -> List[Dict[str, Any]]:
     else:
         bridge = _row("crazyswarm-bridge", 8011, "ok", "ready")
     return [control, bridge]
+
+
+# What the debug panel shows when a row is clicked: (label, URL) per service.
+# The page sends only a service name, and every URL is fixed here, so the
+# page can never make the dashboard fetch an address of its choice. All are
+# read-only GETs. The bridge has no URL of its own (see DEBUG_URLS): its data
+# is the "backend" part of drone-control's /health.
+DEBUG_DETAIL: Dict[str, List[Tuple[str, str]]] = {
+    "drone-control": [
+        ("/health", f"{UPSTREAMS['control']}/health"),
+        ("/status (last command)", f"{UPSTREAMS['control']}/status"),
+        ("/states", f"{UPSTREAMS['control']}/states"),
+    ],
+    "hungarian": [("/health", f"{DEBUG_URLS['hungarian']}/health")],
+    "formation": [("/health", f"{DEBUG_URLS['formation']}/health")],
+    "mission": [
+        ("/status", f"{UPSTREAMS['mission']}/status"),
+        ("/last_reform", f"{UPSTREAMS['mission']}/last_reform"),
+        ("/last_move", f"{UPSTREAMS['mission']}/last_move"),
+    ],
+    "downed-simulator": [("/health", f"{UPSTREAMS['simulator']}/health")],
+    "crazyswarm-bridge": [("drone-control /health", f"{UPSTREAMS['control']}/health")],
+}
+
+
+def _bridge_view(health: Any) -> Any:
+    """The part of drone-control's /health that is about the bridge."""
+    if not isinstance(health, dict):
+        return health
+    view = {key: health[key] for key in ("status", "mode", "backend_error") if key in health}
+    if "backend" in health:
+        view["backend"] = health["backend"]
+    return view
+
+
+def _debug_source(name: str, label: str, url: str) -> Dict[str, Any]:
+    data, error = _debug_fetch(url)
+    if name == "crazyswarm-bridge" and error is None:
+        data = _bridge_view(data)
+    return {"label": label, "ok": error is None, "error": error, "data": data}
+
+
+@app.get("/api/debug/detail/{name}")
+async def debug_detail(name: str) -> Dict[str, Any]:
+    """The JSON behind one row of the debug panel's service table.
+
+    Declared before /api/{service}/{path}, which would otherwise swallow it.
+    """
+    if name == "dashboard":
+        # Where this dashboard sends each request: useful when a row is down
+        # because a URL is wrong, not because the service is.
+        data = {"upstreams": UPSTREAMS, "debug_urls": DEBUG_URLS}
+        return {"name": name, "sources": [{"label": "configuration", "ok": True, "error": None, "data": data}]}
+    if name not in DEBUG_DETAIL:
+        raise HTTPException(status_code=404, detail=f"No debug detail for {name!r}")
+    sources = await asyncio.gather(
+        *(run_in_threadpool(_debug_source, name, label, url) for label, url in DEBUG_DETAIL[name])
+    )
+    return {"name": name, "sources": list(sources)}
 
 
 @app.get("/api/debug/status")

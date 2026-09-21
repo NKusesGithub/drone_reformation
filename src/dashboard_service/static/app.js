@@ -474,17 +474,27 @@ async function pollHealth() {
 // ------------------------------------------------------------------ debug panel
 
 let debugChecklistLoaded = false;
+let debugServicesJson = "";
+let debugSelected = null;
 
 function renderDebug(data) {
-  const body = $("debug-services-body");
-  body.replaceChildren();
-  for (const svc of data.services || []) {
-    const detail = typeof svc.detail === "string" ? svc.detail : JSON.stringify(svc.detail);
-    body.append(el("tr", {},
-      el("td", { text: svc.name }),
-      el("td", { class: "num", text: String(svc.port) }),
-      el("td", {}, pill(svc.state || (svc.ok ? "ok" : "down"))),
-      el("td", { text: detail })));
+  // Rebuild the table only when something changed. A rebuild every poll would
+  // take the keyboard focus off the row button that the user is on.
+  const servicesJson = JSON.stringify(data.services || []);
+  if (servicesJson !== debugServicesJson) {
+    debugServicesJson = servicesJson;
+    const body = $("debug-services-body");
+    body.replaceChildren();
+    for (const svc of data.services || []) {
+      const detail = typeof svc.detail === "string" ? svc.detail : JSON.stringify(svc.detail);
+      const open = el("button", { type: "button", class: "linklike", text: svc.name,
+                                  "aria-expanded": String(svc.name === debugSelected) });
+      body.append(el("tr", { "data-name": svc.name, class: svc.name === debugSelected ? "selected" : "" },
+        el("td", {}, open),
+        el("td", { class: "num", text: String(svc.port) }),
+        el("td", {}, pill(svc.state || (svc.ok ? "ok" : "down"))),
+        el("td", { text: detail })));
+    }
   }
 
   if (!debugChecklistLoaded && Array.isArray(data.checklist)) {
@@ -504,6 +514,173 @@ async function pollDebug() {
     log(`Debug panel: ${err.message}`, "bad");
   }
 }
+
+function markDebugSelection() {
+  for (const row of $("debug-services-body").children) {
+    const selected = row.dataset.name === debugSelected;
+    row.classList.toggle("selected", selected);
+    row.querySelector("button")?.setAttribute("aria-expanded", String(selected));
+  }
+}
+
+function closeDebugDetail() {
+  debugSelected = null;
+  $("debug-detail").hidden = true;
+  markDebugSelection();
+}
+
+async function openDebugDetail(name) {
+  debugSelected = name;
+  markDebugSelection();
+  $("debug-detail").hidden = false;
+  $("debug-detail-title").textContent = name;
+  $("debug-detail-time").textContent = "";
+  $("debug-detail-body").replaceChildren(el("p", { class: "hint", text: "Loading…" }));
+  try {
+    const data = await api("GET", "debug", `/detail/${encodeURIComponent(name)}`);
+    if (debugSelected !== name) return;   // another row was clicked while this loaded
+    $("debug-detail-time").textContent = `read at ${new Date().toLocaleTimeString()}`;
+    $("debug-detail-body").replaceChildren(...data.sources.map(renderDebugSource));
+  } catch (err) {
+    if (debugSelected === name) {
+      $("debug-detail-body").replaceChildren(el("p", { class: "j-error", text: err.message }));
+    }
+  }
+}
+
+function renderDebugSource(source) {
+  const raw = el("pre", { class: "j-raw", hidden: "" });
+  raw.textContent = JSON.stringify(source.data, null, 2);
+  const rawButton = el("button", { type: "button", class: "small", text: "Raw JSON" });
+  rawButton.addEventListener("click", () => {
+    raw.hidden = !raw.hidden;
+    rawButton.textContent = raw.hidden ? "Raw JSON" : "Formatted";
+    view.hidden = !raw.hidden;
+  });
+  const copyButton = el("button", { type: "button", class: "small", text: "Copy" });
+  copyButton.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(raw.textContent);
+      copyButton.textContent = "Copied";
+    } catch {
+      copyButton.textContent = "Copy failed";
+    }
+    setTimeout(() => { copyButton.textContent = "Copy"; }, 1500);
+  });
+
+  const view = source.ok
+    ? el("div", { class: "j-view" }, jsonView(source.data))
+    : el("p", { class: "j-error", text: source.error });
+  const head = el("div", { class: "j-source-head" },
+    el("h3", { text: source.label }), pill(source.ok ? "ok" : "down"));
+  if (source.ok) head.append(rawButton, copyButton);
+  return el("section", { class: "j-source" }, head, view, raw);
+}
+
+// ------------------------------------------------------------------ JSON, legibly
+//
+// Keys stay exactly as the services send them, so they match curl and the
+// docs. Only the layout changes: lists of records become tables, and numbers
+// are rounded (the full value is in the tooltip).
+
+const isPlainObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+const isScalar = (v) => v === null || typeof v !== "object";
+const isScalarArray = (v) => Array.isArray(v) && v.length > 0 && v.length <= 20 && v.every(isScalar);
+const round = (n) => (Number.isInteger(n) ? String(n) : String(+n.toFixed(3)));
+
+// A Unix time in seconds, under a key that names a time ("at", "*_at",
+// "last_update").
+const isTimestamp = (key, v) =>
+  typeof v === "number" && v > 1e9 && v < 1e11
+  && (key === "at" || /(_at|_time|timestamp|update|updated)$/.test(key));
+
+// Keys whose [x, y] or [x, y, z] values are positions. Needed because a
+// position can be all whole numbers, like (0, 0), and look like an ID list.
+const POSITION_KEY = /position|slot|target|pos$|xy$/;
+
+function ago(seconds) {
+  const s = Math.max(0, Math.round(Date.now() / 1000 - seconds));
+  if (s < 60) return `${s} s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  return `${Math.floor(s / 3600)} h ago`;
+}
+
+function jsonScalar(value, key) {
+  if (value === null) return el("span", { class: "j-null", text: "null" });
+  if (typeof value === "boolean") return el("span", { class: value ? "j-true" : "j-false", text: String(value) });
+  if (typeof value === "number") {
+    const text = isTimestamp(key, value) ? `${time(value)} (${ago(value)})` : round(value);
+    return el("span", { class: "j-num", text, title: String(value) });
+  }
+  return el("span", { class: "j-str", text: String(value) });
+}
+
+function jsonInlineArray(values, key = "") {
+  // [x, y] or [x, y, z] is a position if its key says so, or if it has a
+  // fraction in it. [1, 2, 1] under "old_formation" stays a plain list.
+  const position = (values.length === 2 || values.length === 3)
+    && values.every((x) => typeof x === "number")
+    && (POSITION_KEY.test(key) || values.some((x) => !Number.isInteger(x)));
+  const parts = values.map((x) => (typeof x === "number" ? round(x) : String(x)));
+  return el("span", { class: position ? "j-num" : "j-str",
+                      text: position ? `(${parts.join(", ")})` : parts.join(", "),
+                      title: JSON.stringify(values) });
+}
+
+function jsonView(value, key = "", depth = 0) {
+  if (isScalar(value)) return jsonScalar(value, key);
+  if (Array.isArray(value)) {
+    if (value.length === 0) return el("span", { class: "j-null", text: "none" });
+    if (isScalarArray(value)) return jsonInlineArray(value, key);
+    if (value.every(isPlainObject)) return jsonTable(value.map((row) => [null, row]), depth);
+    return el("ol", { class: "j-list" }, ...value.map((item) => el("li", {}, jsonNested(key, item, depth))));
+  }
+  const entries = Object.entries(value);
+  if (entries.length === 0) return el("span", { class: "j-null", text: "empty" });
+  // A map keyed by drone ID, like /states: one table row per drone.
+  if (entries.length > 1 && entries.every(([k, v]) => /^\d+$/.test(k) && isPlainObject(v))) {
+    return jsonTable(entries, depth);
+  }
+  const list = el("dl", { class: "j-obj" });
+  for (const [k, v] of entries) list.append(el("dt", { text: k }), el("dd", {}, jsonNested(k, v, depth)));
+  return list;
+}
+
+// A value inside an object, list or table cell. Big nested values fold away,
+// open near the top and closed deeper down.
+function jsonNested(key, value, depth, open = depth < 2) {
+  const child = jsonView(value, key, depth + 1);
+  if (isScalar(value) || isScalarArray(value) || Object.keys(value).length === 0) return child;
+  const size = Array.isArray(value) ? `${value.length} items` : `${Object.keys(value).length} fields`;
+  const box = el("details", {}, el("summary", { text: size }), child);
+  box.open = open;
+  return box;
+}
+
+function jsonTable(rows, depth) {
+  // Rows from an ID-keyed map get an "id" column, unless each row already
+  // holds its own ID (like /states), which would show the ID twice.
+  const ownId = (key, row) => String(row.id) === key || String(row.drone_id) === key;
+  const keyed = rows[0][0] !== null && !rows.every(([key, row]) => ownId(key, row));
+  const columns = [];
+  for (const [, row] of rows) for (const k of Object.keys(row)) if (!columns.includes(k)) columns.push(k);
+  const head = el("tr", {}, ...(keyed ? [el("th", { text: "id" })] : []),
+                  ...columns.map((c) => el("th", { text: c })));
+  const body = rows.map(([rowKey, row]) => el("tr", {},
+    ...(keyed ? [el("td", { class: "num", text: rowKey })] : []),
+    ...columns.map((c) => el("td", {}, c in row ? jsonNested(c, row[c], depth, false) : ""))));
+  return el("div", { class: "table-wrap" },
+    el("table", { class: "j-table" }, el("thead", {}, head), el("tbody", {}, ...body)));
+}
+
+$("debug-services-body").addEventListener("click", (event) => {
+  const row = event.target.closest("tr[data-name]");
+  if (!row) return;
+  if (row.dataset.name === debugSelected) closeDebugDetail();
+  else openDebugDetail(row.dataset.name);
+});
+$("debug-detail-refresh").addEventListener("click", () => { if (debugSelected) openDebugDetail(debugSelected); });
+$("debug-detail-close").addEventListener("click", closeDebugDetail);
 
 function every(ms, fn) {
   let running = false;

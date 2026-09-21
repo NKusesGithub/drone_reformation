@@ -232,6 +232,9 @@ Make one rigid body for each drone. Give it the same name as its yaml key, for e
 and not `CF5`. When you make it, the front of the drone must point along the global +X
 direction. Set Z-up, set the stream on, and set **Multicast, 50 Hz**.
 
+The nose of the drone points along `+x`, but the front of the formation is `+y`. These are
+different axes. Refer to [Which axis is the front](#which-axis-is-the-front).
+
 ### 2.3 `motion_capture.yaml`
 
 `hostname: "auto"` finds Motive with a discovery ping on the same LAN. To set the address
@@ -271,6 +274,37 @@ To change the shape, refer to
 [How to change the formation](README_EXPLAINED.md#how-to-change-the-formation).
 [README_EXPLAINED §11](README_EXPLAINED.md#configyaml-docker-1-4-and-5-read-this-file)
 gives each setting in `config.yaml`.
+
+#### Which axis is the front
+
+The **y axis** gives the front. A larger y value is nearer to the front. A smaller y value is
+nearer to the back. The **x axis** gives the width of a row only.
+
+The formation service puts row `r` at `y = -r * formation_spacing`. Thus the front row is at
+`y = 0.0`, and each row behind it has a negative y value. In each row, the spots go along x
+around `x = 0`.
+
+```text
+row 0 (front)  y =  0.0            •              ← larger y = FRONT
+row 1          y = -0.5          •   •
+row 2          y = -1.0        •   •   •          ← smaller y = BACK
+                             ←──── x ────→
+```
+
+Two results are important:
+
+- **The formation has no heading.** The front is always `+y` in the world. You cannot rotate
+  the formation, and it does not turn to the direction of travel. If the drones move along x,
+  the formation continues to point at `+y`.
+- **The front spot is a position, and not a drone.** The Hungarian solver matches the drones to
+  the spots again at each reform. Thus the drone at the front can change. Refer to
+  [the Hungarian service](README_EXPLAINED.md#7-docker-2-hungarian-assignment-the-matching).
+
+CAUTION: THE FRONT OF THE FORMATION AND THE FRONT OF A DRONE USE DIFFERENT AXES. THE FORMATION
+FRONT IS `+y`. THE NOSE OF EACH DRONE POINTS ALONG `+x` IN MOTIVE (§2.2). MISSION SENDS
+`yaw: 0.0` WITH EACH GO-TO COMMAND, THUS A DRONE NEVER TURNS TO FACE THE FORMATION FRONT. IF
+YOU CONFUSE THE TWO AXES, YOU CAN SET THE `initial_position` VALUES INCORRECTLY AND CAUSE A
+COLLISION.
 
 ### 2.5 `.env`: port, backend, API key
 

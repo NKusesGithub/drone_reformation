@@ -308,6 +308,78 @@ def test_debug_status_includes_the_known_faults_checklist(client, calls):
     assert all("check" in item and item["check"] for item in body["checklist"])
 
 
+# The detail view: the JSON behind one row, when the user clicks it.
+
+
+def test_detail_reads_the_fixed_routes_for_a_service(client, calls):
+    healthy(calls)
+    calls.replies[f"{dashboard.UPSTREAMS['mission']}/last_move"] = FakeResponse(
+        200, {"move_results": [{"drone_id": 8, "status": "arrived"}]})
+
+    body = client.get("/api/debug/detail/mission").json()
+
+    assert [s["label"] for s in body["sources"]] == ["/status", "/last_reform", "/last_move"]
+    assert {call["url"] for call in calls} == {
+        f"{dashboard.UPSTREAMS['mission']}/status",
+        f"{dashboard.UPSTREAMS['mission']}/last_reform",
+        f"{dashboard.UPSTREAMS['mission']}/last_move",
+    }
+    last_move = next(s for s in body["sources"] if s["label"] == "/last_move")
+    assert last_move["data"] == {"move_results": [{"drone_id": 8, "status": "arrived"}]}
+
+
+@pytest.mark.parametrize("name", [
+    "nonsense",
+    "..%2F..%2Fetc",
+    "http:%2F%2Fexample.com",
+    "control",          # an UPSTREAMS key, but not a row name
+])
+def test_detail_only_answers_for_known_rows(client, calls, name):
+    # The page sends a name, never a URL: an unknown name must not turn into
+    # a request to an address of the page's choice.
+    response = client.get(f"/api/debug/detail/{name}")
+
+    assert response.status_code == 404
+    assert calls == []
+
+
+def test_detail_for_the_bridge_shows_only_the_bridge_part(client, calls):
+    healthy(calls, upstream={"ready": True, "drones": 4})
+
+    body = client.get("/api/debug/detail/crazyswarm-bridge").json()
+
+    data = body["sources"][0]["data"]
+    assert data["backend"]["upstream"] == {"ready": True, "drones": 4}
+    assert set(data) <= {"status", "mode", "backend_error", "backend"}
+    assert all(":8011" not in call["url"] for call in calls)
+
+
+def test_detail_for_the_dashboard_needs_no_request(client, calls):
+    body = client.get("/api/debug/detail/dashboard").json()
+
+    assert body["sources"][0]["data"]["upstreams"] == dashboard.UPSTREAMS
+    assert calls == []
+
+
+def test_detail_reports_a_failed_source_and_keeps_the_others(client, calls):
+    healthy(calls)
+    calls.replies[f"{dashboard.UPSTREAMS['control']}/states"] = requests.ConnectionError("refused")
+
+    sources = {s["label"]: s for s in client.get("/api/debug/detail/drone-control").json()["sources"]}
+
+    assert sources["/states"]["ok"] is False
+    assert "refused" in sources["/states"]["error"]
+    assert sources["/health"]["ok"] is True
+
+
+def test_detail_keeps_json_that_is_not_an_object(client, calls):
+    calls.reply = FakeResponse(200, [1, 2, 3])
+
+    body = client.get("/api/debug/detail/hungarian").json()
+
+    assert body["sources"][0]["data"] == [1, 2, 3]
+
+
 # --------------------------------------------------------------------------
 # The dashboard's own routes (config editing), which must not be swallowed
 # by the catch-all that forwards everything else.
