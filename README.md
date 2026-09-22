@@ -2,6 +2,22 @@
 
 > This document is written in ASD-STE100 Simplified Technical English.
 
+## Start here
+
+This project has three documents. Use the document that fits your task.
+
+| Your task | Read this |
+|---|---|
+| Learn what to run, and the layout of the stack | This document |
+| Set up and fly real Crazyflie drones, step by step | [docs/QUICKSTART.md](docs/QUICKSTART.md) |
+| Learn why each part exists, and where the traps are | [docs/README_EXPLAINED.md](docs/README_EXPLAINED.md) |
+
+To find a fault, use the fault tables.
+[README_EXPLAINED §15](docs/README_EXPLAINED.md#15-checklist-for-faults) is for the stack.
+[QUICKSTART §8](docs/QUICKSTART.md#8-commands-to-find-faults) is for the radio, ROS and the bridge.
+
+## The architecture
+
 This stack keeps the first architecture of six services. It replaces the old direct AirSim
 control path with the current CrazySwarm FastAPI contract for each drone.
 
