@@ -14,7 +14,7 @@ This project has three documents. Use the document that fits your task.
 
 To find a fault, use the fault tables.
 [README_EXPLAINED §15](docs/README_EXPLAINED.md#15-checklist-for-faults) is for the stack.
-[QUICKSTART §8](docs/QUICKSTART.md#8-commands-to-find-faults) is for the radio, ROS and the bridge.
+[QUICKSTART, Find faults](docs/QUICKSTART.md#find-faults) is for the radio, ROS and the bridge.
 
 ## The architecture
 

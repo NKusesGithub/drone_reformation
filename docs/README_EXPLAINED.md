@@ -160,7 +160,7 @@ steps in sequence:
 The script does **not** do these things:
 
 - **It does not start the CrazySwarm bridge** on `:8011`. You must start the bridge first.
-  Refer to [QUICKSTART §3.3](QUICKSTART.md#33-terminal-2-the-bridge).
+  Refer to [QUICKSTART Step 3](QUICKSTART.md#step-3-check-the-bridge-then-start-drone_reformation).
 - **"Ready." does not mean that the mission is running.** It means only that each service
   answered. The `/health` route of mission gives `ok` also when its worker stopped with an
   error (§12.5). Do a check of `running` and `last_error` with
@@ -171,7 +171,7 @@ Then it removes the containers. With `--no-land` it only stops the mission loop,
 not land the drones.
 
 For the full start procedure on real drones, refer to
-[QUICKSTART §3.4](QUICKSTART.md#34-terminal-3-the-stack).
+[QUICKSTART Step 3](QUICKSTART.md#step-3-check-the-bridge-then-start-drone_reformation).
 
 ### The dashboard on port 8006
 
@@ -970,7 +970,7 @@ The visualizer is behind the `visualizer` compose profile. Thus it starts only w
 ## 11. Each setting explained
 
 To set up these values for real drones, obey
-[QUICKSTART §2](QUICKSTART.md#2-the-settings-four-places-must-agree).
+[QUICKSTART 1B](QUICKSTART.md#1b-set-the-hardware-config-once-per-drone-set).
 
 There are two files. If the two files set the same item, the environment variable always wins.
 
@@ -1083,7 +1083,7 @@ stuck during the reformation (§12.10).
 If you use `ids: [1..9]` as in
 [config.example.yaml](../config.example.yaml), the count is correct. But its `[1,2,3,2,1]` is
 one of the shapes that stops. §6 has the full list. The setup steps are in
-[QUICKSTART §2.4](QUICKSTART.md#24-configyaml-of-drone_reformation).
+[QUICKSTART 1B](QUICKSTART.md#1b-set-the-hardware-config-once-per-drone-set).
 
 ### 12.2 The safety check looks at the wrong spots
 
@@ -1268,7 +1268,7 @@ The backend adapter of Docker 1 is the only exception.
 ## 15. Checklist for faults
 
 This table is for the stack. For problems with the radio, ROS, the mocap or the bridge, refer
-to [QUICKSTART §8](QUICKSTART.md#8-commands-to-find-faults).
+to [QUICKSTART, Find faults](QUICKSTART.md#find-faults).
 
 | What you see | Where to look |
 |---|---|
