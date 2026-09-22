@@ -4,6 +4,52 @@ Newest entry first.
 
 ---
 
+## 2026-09-22
+
+**Changed:** One focused Task A improvement. Added cross-navigation from
+`README.md`, which was the only one of the three documents with no links to the
+other two.
+
+- Added a `## Start here` section at the top of `README.md`, below the
+  ASD-STE100 note. It has a small "Your task / Read this" table that points a
+  reader to `docs/QUICKSTART.md` (fly real drones) and
+  `docs/README_EXPLAINED.md` (why each part exists, and the traps). This
+  completes the cross-link triangle: `QUICKSTART.md` and `README_EXPLAINED.md`
+  already link back to `README.md` and to each other.
+- The same section adds two direct links to the fault tables:
+  `README_EXPLAINED §15` for the stack, and `QUICKSTART §8` for the radio, ROS
+  and the bridge. Both anchors are already in use inside the other two
+  documents, so they are proven.
+- Gave the previously unheaded intro and architecture diagram a `##
+  The architecture` heading, so the new `## Start here` section has a clean
+  boundary and a reader can scan the top of the file.
+- No technical content changed: no route, port, path, number, or code block was
+  touched. Navigation and headings only.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 169 passed, 1
+  xfailed. The change is documentation only, so the suite is unaffected.
+- Internal links and anchors: a script checked every markdown link in the three
+  documents. Each new link resolves, and both new anchors resolve. The only
+  unresolved links are pre-existing and expected: the sibling
+  `../../CrazySwarm2-with-Mocap` repository (not in this checkout) and the
+  gitignored runtime files `../config.yaml` and `../.env`. None of these come
+  from this change.
+- ASD-STE100: each new sentence obeys the limits. "This project has three
+  documents." (5 words) and "Use the document that fits your task." (7 words,
+  imperative). The fault-table lines are three short sentences, the longest 10
+  words. No gerund as a noun, no em dash, and no slash in prose.
+
+**Verdict: CONTINUE.** Real Task A work is left. `README.md` and the 15-section
+`docs/README_EXPLAINED.md` still have no table of contents, and
+`README_EXPLAINED.md` is long enough that a short TOC of its numbered sections
+would help a reader jump to a topic. A good next step: add a compact table of
+contents to `docs/README_EXPLAINED.md`, with a link to each of its numbered
+sections, and check that each anchor resolves.
+
+---
+
 ## 2026-09-21
 
 **Changed:** Built the Task B debugging panel on the dashboard (one time, as the
