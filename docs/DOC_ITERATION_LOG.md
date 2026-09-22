@@ -4,6 +4,45 @@ Newest entry first.
 
 ---
 
+## 2026-09-22
+
+**Changed:** Task A only. `README.md` had no link to the other two documents anywhere in
+its text, so a reader who lands there first had no way to find them without opening
+`docs/` by hand.
+
+- Added a "Where to go next" section near the top of `README.md`, right after the
+  intro paragraph and before the architecture diagram. It tells the reader that
+  `README.md` is the reference for the services, ports and settings, and gives a
+  link to `docs/QUICKSTART.md` for the run-book and a link to
+  `docs/README_EXPLAINED.md` for the reason each part works this way and the list
+  of traps.
+- No heading in `README.md` changed, and no other document links into `README.md`
+  by anchor, so no link needed a fix for this change.
+- `docs/QUICKSTART.md` and `docs/README_EXPLAINED.md` already cross-link to
+  `README.md` and to each other at the top of each file, from earlier work. This
+  entry only closes the one missing direction.
+- Made no other change. Task B's panel needs no change today.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 169 passed, 1 xfailed.
+- Wrote a script that reads every heading in the three documents, builds its
+  anchor the way GitHub does, and checks each `[text](link)` in the three
+  documents against it. Every internal link and anchor resolves. The links to
+  the sibling `CrazySwarm2-with-Mocap` repository and to the gitignored
+  `config.yaml` and `.env` files are outside this repository and were not part
+  of the check, as in earlier runs.
+- Checked the new sentences by hand against the ASD-STE100 limits: each sentence
+  is under 20 words, each paragraph has one or two sentences, and no sentence uses
+  a banned word, a gerund as a noun, an em dash or a slash.
+
+**Verdict: CONTINUE.** `docs/README_EXPLAINED.md` is 1297 lines with 15 numbered
+sections and no table of contents. A good next step: add a table of contents at
+the top of `docs/README_EXPLAINED.md`, with one link for each of its 15 sections,
+so a reader can jump to a section with no need to scroll.
+
+---
+
 ## 2026-09-21
 
 **Changed:** Built the Task B debugging panel on the dashboard (one time, as the

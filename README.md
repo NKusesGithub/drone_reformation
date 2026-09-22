@@ -5,6 +5,16 @@
 This stack keeps the first architecture of six services. It replaces the old direct AirSim
 control path with the current CrazySwarm FastAPI contract for each drone.
 
+## Where to go next
+
+This document gives the six services, the ports and the settings. Use it as your reference.
+
+For the run-book on real hardware, refer to [QUICKSTART.md](docs/QUICKSTART.md). It gives one
+step at a time, with a link to the reason for each step.
+
+For the reason each part works this way, and the list of known traps, refer to
+[README_EXPLAINED.md](docs/README_EXPLAINED.md).
+
 ```text
 CrazySwarm ROS 2 + FastAPI (usually http://127.0.0.1:8011)
         ↑
