@@ -4,6 +4,51 @@ Newest entry first.
 
 ---
 
+## 2026-09-23
+
+**Changed:** One focused Task A improvement, exactly the next step that the
+2026-09-22 entry named. Added a compact table of contents to
+`docs/README_EXPLAINED.md`, which was the longest of the three documents and had
+no way to jump to a topic.
+
+- Added a `## Contents` section near the top of `docs/README_EXPLAINED.md`,
+  after the intro paragraph and before the first `---` rule and `## 1`. It has a
+  flat list with one link to each of the 15 numbered sections (`## 1` to
+  `## 15`).
+- The link text repeats each section heading verbatim, so no technical name,
+  number, port, route, path, or code block was changed. Structure and
+  navigation only.
+- Each anchor was computed with the GitHub slug rule (lowercase, punctuation
+  dropped, spaces to hyphens) and checked against the real headings.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 178 passed, 1
+  xfailed. The change is documentation only, so the suite is unaffected. (The
+  dev requirements had to be installed first in this fresh container; the
+  Debian PyYAML needed `--ignore-installed PyYAML` to let the pinned version in.)
+- Internal links and anchors: a script computed the slug of every heading in
+  the three documents and matched every markdown link against it. All 15 new
+  TOC links resolve. No anchor is unresolved anywhere. The only unresolved
+  links are pre-existing and expected: the sibling `../../CrazySwarm2-with-Mocap`
+  repository (not in this checkout) and the gitignored runtime files
+  `../config.yaml` and `../.env`. None come from this change.
+- ASD-STE100: the two new sentences obey the limits. "This document has 15
+  sections." (5 words) and "Use the list to go to a section." (8 words,
+  imperative). No gerund as a noun, no em dash, and no slash in prose. The list
+  items are heading titles, not sentences.
+
+**Verdict: CONTINUE.** The three documents now cross-link and
+`README_EXPLAINED.md` has a table of contents. The remaining Task A gap is
+`README.md`, which is long and still has no table of contents of its own top
+sections (`## Start here`, `## The architecture`, and the sections below them).
+A good next step: add a short table of contents to `README.md`, with a link to
+each top-level section, and check that each anchor resolves. After that, Task A
+may be close to `COMPLETE: STOP`, so the next run should judge honestly whether
+a real improvement is left before it makes one.
+
+---
+
 ## 2026-09-22
 
 **Changed:** One focused Task A improvement. Added cross-navigation from
