@@ -4,6 +4,45 @@ Newest entry first.
 
 ---
 
+## 2026-09-24
+
+**Changed:** One focused Task A improvement. Added a compact table of contents
+to `docs/README_EXPLAINED.md`, the next step named by the 2026-09-22 entry.
+
+- Added a `## Contents` section between the intro and the first `---` in
+  `docs/README_EXPLAINED.md`. It is a numbered list of the 15 top-level
+  sections, each a link to its section anchor. A reader of this long document
+  (about 1300 lines) can now jump to a topic.
+- The link text reuses the existing heading text, so no heading changed and
+  no other link needed an update. The anchors follow the same convention as
+  the cross-links already in `README.md` and `docs/QUICKSTART.md` (for
+  example `#15-checklist-for-faults`, which `README.md` already uses).
+- No technical content changed: no route, port, path, number, or code block
+  was touched. Navigation only.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 178 passed, 1
+  xfailed. The change is documentation only, so the suite is unaffected.
+- Internal links and anchors: a script checked every markdown link in the
+  three documents. All 15 new TOC anchors resolve against real headings, and
+  every other in-document anchor still resolves. The only unresolved links
+  are pre-existing and expected: the sibling `../../CrazySwarm2-with-Mocap`
+  repository (not in this checkout) and the gitignored runtime files
+  `../config.yaml` and `../.env`. None of these come from this change.
+- ASD-STE100: the change is a heading (`Contents`, one word) and a list of
+  navigation links. The link text is the existing, already-compliant section
+  headings. No new prose sentence, no gerund as a noun, no em dash, and no
+  slash in prose was added.
+
+**Verdict: CONTINUE.** Real Task A work is left. `README.md` (about 320 lines,
+11 top-level sections and 2 subsections) still has no table of contents. A
+good next step: add a compact table of contents to `README.md`, parallel to
+the one added here, with a link to each of its `##` sections, and check that
+each anchor resolves.
+
+---
+
 ## 2026-09-22
 
 **Changed:** One focused Task A improvement. Added cross-navigation from

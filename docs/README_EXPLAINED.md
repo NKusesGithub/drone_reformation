@@ -10,6 +10,24 @@ This document does not replace the main README. You start the system with
 `./scripts/startup_all.sh`. For the steps of a run on real drones, use
 [QUICKSTART.md](QUICKSTART.md). Its steps link to this document.
 
+## Contents
+
+1. [A short description of the system](#1-a-short-description-of-the-system)
+2. [Why the design is like this](#2-why-the-design-is-like-this)
+3. [The six containers](#3-the-six-containers)
+4. [The status model: the core idea](#4-the-status-model-the-core-idea)
+5. [Docker 1: the gateway](#5-docker-1-the-gateway)
+6. [Docker 3: formation, the geometry](#6-docker-3-formation-the-geometry)
+7. [Docker 2: Hungarian assignment, the matching](#7-docker-2-hungarian-assignment-the-matching)
+8. [Docker 4: mission, the brain](#8-docker-4-mission-the-brain)
+9. [Docker 5: the downed simulator](#9-docker-5-the-downed-simulator)
+10. [Docker 6: the visualizer](#10-docker-6-the-visualizer)
+11. [Each setting explained](#11-each-setting-explained)
+12. [Traps and unexpected behavior](#12-traps-and-unexpected-behavior)
+13. [The best sequence to read the code](#13-the-best-sequence-to-read-the-code)
+14. [How to learn the algorithm with no hardware](#14-how-to-learn-the-algorithm-with-no-hardware)
+15. [Checklist for faults](#15-checklist-for-faults)
+
 ---
 
 ## 1. A short description of the system
