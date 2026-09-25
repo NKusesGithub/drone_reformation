@@ -4,6 +4,50 @@ Newest entry first.
 
 ---
 
+## 2026-09-25
+
+**Changed:** One focused Task A improvement. Added a compact table of contents
+to `README.md`, the next step named by the 2026-09-24 entry. This completes the
+table of contents for all three documents.
+
+- Added a `## Contents` section between the ASD-STE100 note and the first
+  section (`## Start here`) in `README.md`. It is a numbered list of the 10
+  top-level `##` sections, each a link to its section anchor. This parallels
+  the `## Contents` block added to `docs/README_EXPLAINED.md` on 2026-09-24.
+- The link text reuses the existing heading text, so no heading changed and
+  no other link needed an update. The anchors follow the GitHub convention
+  already used by the cross-links in the three documents.
+- No technical content changed: no route, port, path, number, or code block
+  was touched. Navigation only.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 178 passed, 1
+  xfailed. The change is documentation only, so the suite is unaffected.
+- Internal links and anchors: a script checked every markdown link in the
+  three documents. All 10 new TOC anchors resolve against real headings, and
+  every other in-document anchor still resolves (no bad-anchor result). The
+  only unresolved links are pre-existing and expected: the sibling
+  `../../CrazySwarm2-with-Mocap` repository (not in this checkout) and the
+  gitignored runtime files `../config.yaml` and `../.env`. None of these come
+  from this change.
+- ASD-STE100: the change is a heading (`Contents`, one word) and a list of
+  navigation links. The link text is the existing, already-compliant section
+  headings. No new prose sentence, no gerund as a noun, no em dash, and no
+  slash in prose was added.
+
+**Verdict: CONTINUE.** All three documents now have a table of contents and a
+cross-link triangle, so the largest navigation gaps are closed. One small,
+useful Task A step is left: `README.md` has two `###` subsections under
+`## The settings files` (`anchor_policy` and `MISSION_AUTO_START`) that a
+reader often needs but the top-level TOC does not reach. A good next step: add
+these two subsections as indented sub-entries under item 5 of the `README.md`
+Contents list, and check that both anchors resolve. If a future run finds no
+real improvement of this kind, it should record `COMPLETE: STOP` and not
+invent work.
+
+---
+
 ## 2026-09-24
 
 **Changed:** One focused Task A improvement. Added a compact table of contents
