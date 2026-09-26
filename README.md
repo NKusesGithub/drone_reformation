@@ -2,6 +2,19 @@
 
 > This document is written in ASD-STE100 Simplified Technical English.
 
+## Contents
+
+- [Start here](#start-here)
+- [The architecture](#the-architecture)
+- [Important behavior of the API](#important-behavior-of-the-api)
+- [Services and ports](#services-and-ports)
+- [The settings files](#the-settings-files)
+- [Start sequence](#start-sequence)
+- [Do a test of Docker 1](#do-a-test-of-docker-1)
+- [How to simulate a downed drone](#how-to-simulate-a-downed-drone)
+- [Shutdown](#shutdown)
+- [Layout of the repository](#layout-of-the-repository)
+
 ## Start here
 
 This project has three documents. Use the document that fits your task.

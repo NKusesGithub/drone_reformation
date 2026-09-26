@@ -4,6 +4,61 @@ Newest entry first.
 
 ---
 
+## 2026-09-26
+
+**Changed:** One focused Task A improvement. Added a compact table of contents
+to `README.md`, the next step named by the 2026-09-24 entry. This completes the
+table-of-contents work across all three documents.
+
+- Added a `## Contents` section between the intro blockquote and the first
+  section (`## Start here`) in `README.md`. It is a bulleted list of the 10
+  top-level (`##`) sections, each a link to its section anchor. This mirrors
+  the `## Contents` block added to `docs/README_EXPLAINED.md` on 2026-09-24
+  and to the same placement (right after the intro, before the first section).
+- The list is bulleted, not numbered, because the sections in `README.md` have
+  no numbers. A numbered list would imply section numbers that the headings do
+  not carry.
+- The link text reuses the existing heading text, so no heading changed and no
+  other link needed an update. The anchors follow the GitHub convention already
+  used by the cross-links in `README.md`, `docs/QUICKSTART.md`, and
+  `docs/README_EXPLAINED.md`.
+- No technical content changed: no route, port, path, number, or code block
+  was touched. Navigation only.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 178 passed, 1
+  xfailed. The change is documentation only, so the suite is unaffected.
+- Internal links and anchors: a script checked every markdown link in the
+  three documents. All 10 new TOC anchors resolve against real headings, and
+  every other in-document and cross-document anchor among the three docs still
+  resolves. The only unresolved links are pre-existing and expected: the
+  sibling `../../CrazySwarm2-with-Mocap` repository (not in this checkout) and
+  the gitignored runtime files `../config.yaml` and `../.env`. None of these
+  come from this change.
+- ASD-STE100: the change is a heading (`Contents`, one word) and a list of
+  navigation links. The link text is the existing, already-compliant section
+  headings. No new prose sentence, no gerund as a noun, no em dash, and no
+  slash in prose was added.
+
+**Verdict: CONTINUE.** The three documents now each have a table of contents,
+and the cross-link triangle between them is complete (done 2026-09-22). One
+small, real Task A improvement remains, found while checking the other two docs:
+`docs/QUICKSTART.md` nests its subsections in its `## Contents` block, but the
+new `README.md` TOC lists only the 10 `##` sections. It omits the two `###`
+subsections under `The settings files`: `anchor_policy` (the front-of-formation
+behavior after a loss) and `MISSION_AUTO_START` (does the stack take off without
+a command). Both are substantial, reader-relevant, and a reader would want to
+jump straight to them. A good next step: add these two subsections as nested
+entries under `The settings files` in the `README.md` TOC, in the same nested
+style as `docs/QUICKSTART.md`, and check that both anchors resolve
+(`#anchor_policy-what-happens-to-the-front-when-a-drone-goes-down` and
+`#mission_auto_start-does-the-stack-take-off-without-a-command`). After that, the
+table-of-contents work is likely complete, and a run should look hard for a real
+improvement before it chooses `CONTINUE` again.
+
+---
+
 ## 2026-09-24
 
 **Changed:** One focused Task A improvement. Added a compact table of contents
