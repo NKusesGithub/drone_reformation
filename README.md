@@ -16,6 +16,19 @@ To find a fault, use the fault tables.
 [README_EXPLAINED §15](docs/README_EXPLAINED.md#15-checklist-for-faults) is for the stack.
 [QUICKSTART, Find faults](docs/QUICKSTART.md#find-faults) is for the radio, ROS and the bridge.
 
+## Contents
+
+1. [Start here](#start-here)
+2. [The architecture](#the-architecture)
+3. [Important behavior of the API](#important-behavior-of-the-api)
+4. [Services and ports](#services-and-ports)
+5. [The settings files](#the-settings-files)
+6. [Start sequence](#start-sequence)
+7. [Do a test of Docker 1](#do-a-test-of-docker-1)
+8. [How to simulate a downed drone](#how-to-simulate-a-downed-drone)
+9. [Shutdown](#shutdown)
+10. [Layout of the repository](#layout-of-the-repository)
+
 ## The architecture
 
 This stack keeps the first architecture of six services. It replaces the old direct AirSim
