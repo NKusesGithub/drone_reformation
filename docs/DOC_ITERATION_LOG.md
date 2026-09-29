@@ -4,6 +4,48 @@ Newest entry first.
 
 ---
 
+## 2026-09-29
+
+**Changed:** One focused Task A improvement. Added a compact table of contents
+to `README.md`, the next step named by the 2026-09-24 entry.
+
+- Added a `## Contents` section between the ASD-STE100 note and the first
+  `## Start here` section in `README.md`. It is a numbered list of the 10
+  top-level `##` sections, each a link to its section anchor. A reader can now
+  jump to a topic without a scroll.
+- The list mirrors the `## Contents` block already in
+  `docs/README_EXPLAINED.md`. The link text reuses the existing heading text,
+  so no heading changed and no other link needed an update.
+- The anchors follow the GitHub convention already in use by the cross-links
+  in `README.md` and `docs/QUICKSTART.md` (for example `#services-and-ports`).
+- No technical content changed: no route, port, path, number, or code block
+  was touched. Navigation only.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 178 passed, 1
+  xfailed. The change is documentation only, so the suite is unaffected.
+- Internal links and anchors: a script checked every markdown link in the
+  three documents. All 10 new TOC anchors resolve against real headings, and
+  every other in-document anchor still resolves. The only unresolved links
+  are pre-existing and expected: the sibling `../../CrazySwarm2-with-Mocap`
+  repository (not in this checkout) and the gitignored runtime files
+  `../config.yaml` and `../.env`. None of these come from this change.
+- ASD-STE100: the change is a heading (`Contents`, one word) and a list of
+  navigation links. The link text is the existing, already-compliant section
+  headings. No new prose sentence, no gerund as a noun, no em dash, and no
+  slash in prose was added.
+
+**Verdict: CONTINUE.** The three documents now each have a table of contents
+and full cross-navigation, so the main Task A gaps are closed. Small useful
+work is still possible. A good next step: in `README.md`, the two `###`
+subsections under `## The settings files` (`anchor_policy` and
+`MISSION_AUTO_START`) are long and are not in the new `## Contents`. Add these
+two as indented sub-items under item 5, so a reader can jump straight to a
+setting. Check that both `###` anchors resolve.
+
+---
+
 ## 2026-09-24
 
 **Changed:** One focused Task A improvement. Added a compact table of contents
