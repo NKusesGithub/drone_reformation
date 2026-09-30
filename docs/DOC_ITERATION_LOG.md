@@ -4,6 +4,49 @@ Newest entry first.
 
 ---
 
+## 2026-09-30
+
+**Changed:** One focused Task A improvement. Added a compact table of contents
+to `README.md`, the next step named by the 2026-09-24 entry.
+
+- Added a `## Contents` section between the `## Start here` section and the
+  `## The architecture` section in `README.md`. It is a numbered list of the 10
+  top-level `##` sections, each a link to its section anchor. A reader can now
+  jump to a topic in the file.
+- This completes the table-of-contents work across the three documents.
+  `docs/README_EXPLAINED.md` got its TOC on 2026-09-24, and
+  `docs/QUICKSTART.md` already had a `## Contents` section (line 28). All three
+  documents now have one.
+- The link text reuses the existing heading text, so no heading changed and no
+  other link needed an update. The anchors follow the same GitHub convention as
+  the TOC added to `docs/README_EXPLAINED.md`.
+- No technical content changed: no route, port, path, number, or code block was
+  touched. Navigation only.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 178 passed, 1
+  xfailed. The change is documentation only, so the suite is unaffected.
+- Internal links and anchors: a script checked every markdown link in the three
+  documents. All 10 new TOC anchors resolve against real headings, and every
+  other in-document anchor still resolves. The only unresolved links are
+  pre-existing and expected: the sibling `../../CrazySwarm2-with-Mocap`
+  repository (not in this checkout) and the gitignored runtime files
+  `../config.yaml` and `../.env`. None of these come from this change.
+- ASD-STE100: the change is a heading (`Contents`, one word) and a list of
+  navigation links. The link text is the existing, already-compliant section
+  headings. No new prose sentence, no gerund as a noun, no em dash, and no
+  slash in prose was added.
+
+**Verdict: CONTINUE.** The three documents now all have a table of contents and
+the cross-link triangle is complete. One small next step is left: the long
+`## The settings files` section in `README.md` (about 100 lines) holds two named
+subsections, `### `anchor_policy`` and `### `MISSION_AUTO_START``. A good next
+step: add these two `###` subsections to the new `## Contents` list as indented
+entries, and check that each anchor resolves.
+
+---
+
 ## 2026-09-24
 
 **Changed:** One focused Task A improvement. Added a compact table of contents
