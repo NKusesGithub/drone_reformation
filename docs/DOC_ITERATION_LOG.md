@@ -4,6 +4,54 @@ Newest entry first.
 
 ---
 
+## 2026-10-02
+
+**Changed:** One focused Task A improvement. Added a compact table of contents
+to `README.md`, the next step named by the 2026-09-24 entry. This completes a
+table of contents in all three documents.
+
+- Added a `## Contents` section between the `## Start here` inter-document
+  navigation and `## The architecture` in `README.md`. It is a numbered list
+  of the 10 top-level `##` sections, each a link to its section anchor. A
+  reader can now jump to a topic without a scroll.
+- The pattern matches the `## Contents` list added to `docs/README_EXPLAINED.md`
+  on 2026-09-24 and the one already in `docs/QUICKSTART.md`. The link text
+  reuses the existing heading text, so no heading changed and no other link
+  needed an update.
+- The list holds only the `##` sections, not the two `###` subsections under
+  `## The settings files`, to keep the list short. This is the same depth as
+  the other two documents' tables of contents.
+- No technical content changed: no route, port, path, number, or code block
+  was touched. Navigation only.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 178 passed, 1
+  xfailed. The change is documentation only, so the suite is unaffected.
+- Internal links and anchors: a script checked every markdown link in the
+  three documents. All 10 new table-of-contents anchors resolve against real
+  `README.md` headings, and every other in-document anchor still resolves. The
+  only unresolved links are pre-existing and expected: the sibling
+  `../../CrazySwarm2-with-Mocap` repository (not in this checkout) and the
+  gitignored runtime files `../config.yaml` and `../.env`. None of these come
+  from this change.
+- ASD-STE100: the change is a heading (`Contents`, one word) and a list of
+  navigation links. The link text is the existing, already-compliant section
+  headings. No new prose sentence, no gerund as a noun, no em dash, and no
+  slash in prose was added.
+
+**Verdict: CONTINUE.** A small, real Task A step is left. The `README.md`
+table of contents lists only the `##` sections, but the two `###` subsections
+under `## The settings files` (`anchor_policy` and `MISSION_AUTO_START`) are
+long and the brief's fault table points a reader to them. A good next step:
+add these two subsections as indented sub-items under "The settings files" in
+the `README.md` table of contents, and check that both anchors
+(`#anchor_policy-what-happens-to-the-front-when-a-drone-goes-down` and
+`#mission_auto_start-does-the-stack-take-off-without-a-command`) resolve.
+After that step, the navigation work is likely complete.
+
+---
+
 ## 2026-09-24
 
 **Changed:** One focused Task A improvement. Added a compact table of contents
