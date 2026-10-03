@@ -4,6 +4,51 @@ Newest entry first.
 
 ---
 
+## 2026-10-03
+
+**Changed:** One focused Task A improvement. Added a compact table of contents
+to `README.md`, the next step named by the 2026-09-24 entry. This completes the
+TOC work: all three documents now have a `## Contents` section.
+
+- Added a `## Contents` section between the ASD-STE100 note and the first
+  `## Start here` section in `README.md`. It is a numbered list of the 10
+  top-level (`##`) sections, each a link to its section anchor. This matches
+  the placement and form of the `## Contents` already in
+  `docs/README_EXPLAINED.md` (which sits before its body sections).
+- The link text reuses the existing heading text, so no heading changed and
+  no other link needed an update. The two `###` subsections
+  (`anchor_policy`, `MISSION_AUTO_START`) are left out, to keep the list to
+  the top-level sections, as the companion TOC does.
+- No technical content changed: no route, port, path, number, or code block
+  was touched. Navigation only.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 178 passed, 1
+  xfailed. The change is documentation only, so the suite is unaffected.
+- Internal links and anchors: a script checked every markdown link in the
+  three documents. All 10 new TOC anchors resolve against real headings, and
+  every other in-document anchor still resolves. The only unresolved links
+  are pre-existing and expected: the sibling `../../CrazySwarm2-with-Mocap`
+  repository (not in this checkout) and the gitignored runtime files
+  `../config.yaml` and `../.env`. None of these come from this change.
+- ASD-STE100: the change is a heading (`Contents`, one word) and a list of
+  navigation links. The link text is the existing, already-compliant section
+  headings. No new prose sentence, no gerund as a noun, no em dash, and no
+  slash in prose was added.
+
+**Verdict: COMPLETE: STOP.** The three documents now each have a table of
+contents and a full cross-link triangle between them (added over the
+2026-09-22, 2026-09-24, and today's runs), plus direct links to the fault
+tables. The Task A examples in the brief (table of contents, cross-navigation,
+"start here" entry point, scannable headings) are all satisfied. No real
+further navigation or structure improvement remains that would not be churn,
+and the brief says to stop rather than invent work. The Task B debugging panel
+already exists (built 2026-09-21) and needs no change. Any future run should
+make a change only if a concrete reader problem appears.
+
+---
+
 ## 2026-09-24
 
 **Changed:** One focused Task A improvement. Added a compact table of contents
