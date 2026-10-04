@@ -4,6 +4,51 @@ Newest entry first.
 
 ---
 
+## 2026-10-04
+
+**Changed:** One focused Task A improvement. Added a compact table of contents
+to `README.md`, the next step named by the 2026-09-24 entry.
+
+- Added a `## Contents` section between the ASD-STE100 note and the first
+  `## Start here` section in `README.md`. It is a numbered list of the 10
+  top-level `##` sections, each a link to its section anchor. A reader can now
+  jump to a topic from the top of the file.
+- This completes the table-of-contents pair. `docs/README_EXPLAINED.md` got its
+  `## Contents` on 2026-09-24, and now `README.md` has the same navigation, in
+  the same style and the same place (above the first section).
+- The link text reuses the existing heading text, so no heading changed and no
+  other link needed an update. The anchors follow the same GitHub convention as
+  the cross-links already in the three documents (for example
+  `#how-to-simulate-a-downed-drone`).
+- No technical content changed: no route, port, path, number, or code block was
+  touched. Navigation only.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 178 passed, 1
+  xfailed. The change is documentation only, so the suite is unaffected.
+- Internal links and anchors: a script checked every markdown link in the three
+  documents. All 10 new TOC anchors resolve against real headings, and every
+  other in-document anchor still resolves. The only unresolved links are
+  pre-existing and expected: the sibling `../../CrazySwarm2-with-Mocap`
+  repository (not in this checkout), the gitignored runtime files
+  `../config.yaml` and `../.env`, and the source-code line links (for example
+  `../src/mission_service/app.py#L210`) that point at real files. None of these
+  come from this change, and none are in `README.md`.
+- ASD-STE100: the change is a heading (`Contents`, one word) and a list of
+  navigation links. The link text is the existing, already-compliant section
+  headings. No new prose sentence, no gerund as a noun, no em dash, and no
+  slash in prose was added.
+
+**Verdict: CONTINUE.** The three documents now each have a table of contents
+and cross-links to the others, so the largest navigation gaps are closed. A
+smaller next step remains: `docs/README_EXPLAINED.md` is long (about 1300
+lines), and a short "Back to contents" link after each numbered section, or
+below each major section, would let a reader return to the top without a long
+scroll. Keep each such change small and check that each anchor resolves.
+
+---
+
 ## 2026-09-24
 
 **Changed:** One focused Task A improvement. Added a compact table of contents
