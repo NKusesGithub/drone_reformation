@@ -4,6 +4,52 @@ Newest entry first.
 
 ---
 
+## 2026-10-05
+
+**Changed:** One focused Task A improvement. Added a compact table of contents
+to `README.md`, the next step named by the 2026-09-24 entry. Now each of the
+three documents has a table of contents.
+
+- Added a `## Contents` section to `README.md`, below the `## Start here`
+  block and above `## The architecture`. The `## Start here` block orients a
+  reader to the correct document, so the new `## Contents` that follows is for
+  moving inside this document. This parallels the table of contents added to
+  `docs/README_EXPLAINED.md` on 2026-09-24.
+- The table is a numbered list of the 10 top-level (`##`) sections, each a
+  link to its section anchor. The link text reuses the existing heading text,
+  so no heading changed and no other link needed an update.
+- The two `###` subsections of `The settings files` (`anchor_policy` and
+  `MISSION_AUTO_START`) are not in the table yet. This keeps the change small,
+  and matches the named step ("a link to each of its `##` sections").
+- No technical content changed: no route, port, path, number, or code block
+  was touched. Navigation only.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 178 passed, 1
+  xfailed. The change is documentation only, so the suite is unaffected.
+- Internal links and anchors: a script checked every markdown link in the
+  three documents. All 10 new table-of-contents anchors resolve against real
+  headings, and every other in-document anchor still resolves. The only
+  unresolved links are pre-existing and expected: the sibling
+  `../../CrazySwarm2-with-Mocap` repository (not in this checkout) and the
+  gitignored runtime files `../config.yaml` and `../.env`. None of these come
+  from this change.
+- ASD-STE100: the change is a heading (`Contents`, one word) and a list of
+  navigation links. The link text is the existing, already-compliant section
+  headings. No new prose sentence, no gerund as a noun, no em dash, and no
+  slash in prose was added.
+
+**Verdict: CONTINUE.** A small Task A improvement is left. The table of
+contents in `docs/QUICKSTART.md` nests its subsections (for example `1A` and
+`Step 0`) below their parent, but the new `README.md` table lists only the
+top-level sections. A good next step: nest the two `###` subsections
+(`anchor_policy` and `MISSION_AUTO_START`) below `The settings files` in the
+`README.md` table of contents, so the three documents use one convention.
+Check that both subsection anchors resolve.
+
+---
+
 ## 2026-09-24
 
 **Changed:** One focused Task A improvement. Added a compact table of contents
