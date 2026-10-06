@@ -4,6 +4,57 @@ Newest entry first.
 
 ---
 
+## 2026-10-06
+
+**Changed:** One focused Task A improvement. Added a compact table of contents
+to `README.md`, the next step named by the 2026-09-24 entry. This is the
+parallel of the `## Contents` section already in `docs/README_EXPLAINED.md`.
+
+- Added a `## Contents` section between the `## Start here` section and
+  `## The architecture` in `README.md`. It is a bulleted list that links to
+  each of the 10 top-level `##` sections. The two `###` subsections under
+  `## The settings files` (`anchor_policy` and `MISSION_AUTO_START`) are
+  nested under it, so a reader can jump straight to either setting.
+- A bulleted list fits here, because the `README.md` sections are not
+  numbered (`docs/README_EXPLAINED.md` uses a numbered list, because its
+  sections are numbered).
+- The link text reuses the existing heading text, so no heading changed and
+  no other link needed an update. The two subsection anchors keep their
+  underscores (`#anchor_policy-...` and `#mission_auto_start-...`), which is
+  how GitHub forms the anchor for those headings.
+- No technical content changed: no route, port, path, number, or code block
+  was touched. Navigation only.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 178 passed, 1
+  xfailed. The change is documentation only, so the suite is unaffected.
+- Internal links and anchors: a script checked every markdown link in the
+  three documents. All 12 new TOC links (10 sections plus 2 subsections)
+  resolve against real headings in `README.md`, and every other in-document
+  anchor still resolves. The only unresolved links are pre-existing and
+  expected: the sibling `../../CrazySwarm2-with-Mocap` repository (not in
+  this checkout), the gitignored runtime files `../config.yaml` and
+  `../.env`, and the `#Lnnn` GitHub code line-anchors into `src/` files
+  (these resolve on GitHub, not against markdown headings). None of these
+  come from this change.
+- ASD-STE100: the change is a heading (`Contents`, one word) and a list of
+  navigation links. The link text is the existing, already-compliant section
+  headings. No new prose sentence, no gerund as a noun, no em dash, and no
+  slash in prose was added.
+
+**Verdict: CONTINUE.** The three documents now each have a table of contents
+and a cross-link to the other two, so the core navigation of Task A is in
+place. Smaller Task A work still exists, but it is now near the point of
+diminishing returns, so the next run should weigh it carefully against
+`COMPLETE: STOP`. One concrete, low-risk candidate, if judged useful: in
+`README.md` the `## Services and ports` table and the `## Start here` fault
+links both duplicate data that lives in the fault tables; a single
+cross-reference could replace a duplicated row. If no such real, low-risk
+improvement is found, stop and record `COMPLETE: STOP`.
+
+---
+
 ## 2026-09-24
 
 **Changed:** One focused Task A improvement. Added a compact table of contents
