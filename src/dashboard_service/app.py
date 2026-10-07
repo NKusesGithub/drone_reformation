@@ -12,9 +12,14 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
-from dashboard_service import configio, swarm_sync
+from dashboard_service import configio, stack, swarm_sync
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+# Set by scripts/dashboard.sh, which runs this page on the host instead of in a
+# container. Only then can it start and stop the stack: a container cannot run
+# `docker compose down` on itself and survive it.
+HOST_MODE = os.getenv("DASHBOARD_HOST") == "1"
 
 UPSTREAMS: Dict[str, str] = {
     "control": os.getenv("DRONE_CONTROL_URL", "http://host.docker.internal:8001").rstrip("/"),
@@ -109,7 +114,8 @@ def index() -> FileResponse:
 
 @app.get("/health")
 def health() -> Dict[str, object]:
-    return {"status": "ok", "service": "dashboard", "upstreams": UPSTREAMS}
+    return {"status": "ok", "service": "dashboard", "upstreams": UPSTREAMS,
+            "host_mode": HOST_MODE}
 
 
 async def _json_body(request: Request) -> Dict[str, Any]:
@@ -202,6 +208,108 @@ async def config_apply(request: Request) -> Dict[str, Any]:
         return swarm_sync.apply(_formation_from(payload))
     except swarm_sync.SyncError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/command")
+async def command_preview(request: Request) -> Dict[str, Any]:
+    """The curl command a Status-page button sends, so the page can show it.
+
+    Built here, from the same UPSTREAMS and ALLOWED list forward() uses, so what
+    the page shows is the request that really goes out.
+    """
+    payload = await _json_body(request)
+    method = str(payload.get("method") or "GET").upper()
+    service = str(payload.get("service") or "")
+    path = str(payload.get("path") or "")
+    if (method, service, path) not in ALLOWED:
+        raise HTTPException(status_code=404, detail=f"{method} /{service}{path} is not a dashboard action")
+    argv = ["curl"]
+    if method == "POST":
+        argv += ["-X", "POST", f"{UPSTREAMS[service]}{path}", "-H", "Content-Type: application/json",
+                 "-d", json.dumps(payload.get("body") or {}, separators=(",", ":"))]
+    else:
+        argv.append(f"{UPSTREAMS[service]}{path}")
+    return {"argv": argv, "cmdline": stack.shlex.join(argv)}
+
+
+# ------------------------------------------------------------------ stack
+# Start/stop the stack by running startup_all.sh / shutdown_all.sh. Declared
+# before /api/{service}/{path} for the same reason as the config routes.
+def _host_only() -> None:
+    if not HOST_MODE:
+        raise HTTPException(status_code=409, detail="This dashboard runs inside the stack, so it "
+                            "cannot start or stop it. Run ./scripts/dashboard.sh on the host.")
+
+
+def _stack_call(fn: Any, *args: Any) -> Any:
+    _host_only()
+    try:
+        return fn(*args)
+    except stack.StackError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/stack/status")
+def stack_status() -> Dict[str, Any]:
+    if not HOST_MODE:
+        return {"host_mode": False}
+    return {"host_mode": True, **stack.status()}
+
+
+@app.post("/api/stack/preview")
+async def stack_preview(request: Request) -> Dict[str, Any]:
+    payload = await _json_body(request)
+    build = {"start": stack.start_argv, "stop": stack.stop_argv, "bridge": stack.bridge_argv,
+             "install": stack.install_argv}.get(payload.get("action"))
+    if build is None:
+        raise HTTPException(status_code=400, detail="action must be start, stop, bridge or install")
+    try:
+        argv = build(payload.get("values") or {})
+    except stack.StackError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"argv": argv, "cmdline": stack.shlex.join(argv)}
+
+
+@app.post("/api/stack/start")
+async def stack_start(request: Request) -> Dict[str, Any]:
+    payload = await _json_body(request)
+    return _stack_call(stack.start, payload.get("values") or {})
+
+
+@app.post("/api/stack/stop")
+async def stack_stop(request: Request) -> Dict[str, Any]:
+    payload = await _json_body(request)
+    return await run_in_threadpool(_stack_call, stack.stop, payload.get("values") or {})
+
+
+@app.post("/api/stack/bridge/start")
+async def bridge_start(request: Request) -> Dict[str, Any]:
+    payload = await _json_body(request)
+    return _stack_call(stack.bridge_start, payload.get("values") or {})
+
+
+@app.post("/api/stack/bridge/stop")
+async def bridge_stop(request: Request) -> Dict[str, Any]:
+    payload = await _json_body(request)
+    return _stack_call(stack.bridge_stop, payload.get("values") or {})
+
+
+@app.post("/api/stack/bridge/install")
+async def bridge_install(request: Request) -> Dict[str, Any]:
+    payload = await _json_body(request)
+    return _stack_call(stack.install, payload.get("values") or {})
+
+
+@app.post("/api/stack/cancel")
+async def stack_cancel(request: Request) -> Dict[str, Any]:
+    payload = await _json_body(request)
+    return _stack_call(stack.cancel, str(payload.get("job") or ""))
+
+
+@app.get("/api/stack/job/{job_id}")
+def stack_job(job_id: str, after: int = 0) -> Dict[str, Any]:
+    job = _stack_call(stack.get, job_id)
+    return {"job": job.summary(), "lines": job.tail(after)}
 
 
 def _debug_fetch(url: str) -> Tuple[Any, Optional[str]]:

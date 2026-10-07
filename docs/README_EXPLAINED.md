@@ -176,7 +176,17 @@ For the full start procedure on real drones, refer to
 ### The dashboard on port 8006
 
 [src/dashboard_service/](../src/dashboard_service/) is a web page with buttons for the usual
-steps. Open http://localhost:8006 after `startup_all.sh`.
+steps. Start it on the host with `./scripts/dashboard.sh`, then open http://localhost:8006.
+
+When `dashboard.sh` starts the dashboard, the dashboard is not a container. This lets it do
+two things that a container cannot do:
+
+- It stays available when the stack is stopped. Thus you can change `config.yaml` before the
+  first start.
+- Its **Stack** page runs `startup_all.sh --no-dashboard` and `shutdown_all.sh`. The
+  `--no-dashboard` option is necessary because the host dashboard already uses port 8006.
+
+A dashboard started as a container by `startup_all.sh` does not show the Stack page.
 
 The page refreshes each second. It shows:
 
@@ -454,6 +464,36 @@ Each row has its centre at `x = 0`. For a row of `n` spots, x starts at
 These numbers are **relative**. The origin is the centre of the front row. Mission puts the
 spots in the real world (§8).
 
+### `front_axis`: the same layout, turned a quarter turn
+
+The layout above is `front_axis = "+y"`, which is the default. `mission.front_axis: +x` turns
+the full shape a quarter turn:
+
+```
+        row 2           row 1           row 0 (front)
+
+          •                                              y =  spacing
+                          •
+          •                               •              y =  0  (the centre line)
+                          •
+          •                                              y = -spacing
+
+   x = -2*spacing    x = -spacing       x = 0
+   smaller x = BACK                     bigger x = FRONT
+```
+
+That is `make_slots([1, 2, 3], spacing, "+x")` read from the right to the left: one spot in
+the front row, two spots behind it, then three.
+
+The rules do not change. Only the two axes change places. The rows step back at `-spacing`
+steps in x, and each row is spread along y with its centre at `y = 0`. Each distance between
+two spots stays the same, thus the `safety_gap` limits apply in the same way.
+
+Mission reads the value one time at startup
+([app.py:44](../src/mission_service/app.py#L44)). Then it sends the value in each call to
+Docker 3 and in each call to Docker 2. Thus the two services cannot disagree about the
+direction of the front. A value that is not `+y` or `+x` gets HTTP 400 from both services.
+
 ### How the code sets the shape
 
 There is exactly **one** place in the full system where you set the shape. It is
@@ -691,8 +731,9 @@ cost[i][j] = ||current_position[i] - target_position[j]||
 
 Then it adds two penalties.
 
-**1. The forward-jump penalty, which is always on.** The front has the bigger y value. Thus a
-drone "moves forward" when `target_y > current_y`. If the drone would move forward by more
+**1. The forward-jump penalty, which is always on.** The front has the bigger value on the
+axis that `front_axis` names (§6). This is y by default. Thus a drone "moves forward" when
+`target_y > current_y`. If the drone would move forward by more
 than `forward_jump_threshold_multiplier * spacing`, the cost increases by
 `forward_jump_penalty`. The default multiplier is `2.0`, and the default penalty is `100.0`.
 
@@ -953,7 +994,8 @@ It polls `GET /states_vis` at `VIS_FPS` times each second.
   is the radius of the `safety_gap`.
 - The conversion from the world to pixels is `px = width/2 + x*scale` and
   `py = height/2 − y*scale`. The code inverts y. Thus the window shows **the front of the
-  formation, which has the bigger y value, at the top**.
+  formation, which has the bigger y value, at the top**. The window does not read
+  `front_axis`. Thus a formation with `front_axis: +x` points to the right of the window.
 - `VIS_SCALE=500.0` means 500 pixels for each metre. This value is correct for Crazyflie
   distances, thus a spacing of 0.5 m becomes 250 pixels. The default of `8.0` in the code is
   old and comes from the AirSim period. Compose always replaces it.
@@ -1012,6 +1054,7 @@ The system mounts this file read-only into Docker 1, Docker 4 and Docker 5.
 | `formation_spacing` | `0.5` m | The gap between two spots that are next to each other. It controls **both** the gap from side to side and the gap from front to back |
 | `poll_interval` | `1.0` s | How frequently the loop looks for a loss |
 | `anchor_policy` | `initial_anchor` | Where the formation is in the world (§8) |
+| `front_axis` | `+y` | Which direction the formation points to: `+y` or `+x`. Mission sends it to Docker 3 and to Docker 2 (§6) |
 | `safety_gap` | `0.25` m | The minimum separation. It applies to the target spots and to each hop |
 | `include_downed_in_safety` | `false` | Does a dead drone still occupy space? |
 | `waypoint_step` | `0.25` m | The length of each hop |
