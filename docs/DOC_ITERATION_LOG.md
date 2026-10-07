@@ -4,6 +4,63 @@ Newest entry first.
 
 ---
 
+## 2026-10-07
+
+**Changed:** One focused Task A improvement. Nested the 11 subsections of
+section 12 under its entry in the table of contents in
+`docs/README_EXPLAINED.md`.
+
+- Section 12 (`Traps and unexpected behavior`) is the debugging reference. Its
+  subsections `12.1` to `12.11` are deep-linked from the other two documents
+  (for example `README_EXPLAINED §12.1`, `§12.5`, `§12.6` and `§12.10`), but
+  none of them were reachable from this document's own table of contents, which
+  listed only the 15 top-level sections.
+- Added a nested bulleted list under TOC item 12, with one link to each of the
+  11 subsections. A reader can now jump straight to a trap.
+- This is the parallel of the `README.md` change on 2026-10-06, which nested
+  the two `###` subsections under `## The settings files`. The link text reuses
+  the existing subsection heading text, so no heading changed and no other link
+  needed an update.
+- The four subsection anchors already in use across the three documents
+  (`#121-...`, `#125-...`, `#126-...`, `#1210-...`) proved the anchor pattern,
+  and the other seven follow the same rule.
+- I weighed, and did not take, the candidate named by the 2026-10-06 entry (a
+  cross-reference to replace a duplicated row between `README.md`'s
+  `## Services and ports` table and the fault links). That table is the unique
+  port list, not a copy of the fault tables, so a removal would change
+  technical content, not navigation.
+- No technical content changed: no route, port, path, number, or code block was
+  touched. Navigation only.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 178 passed, 1
+  xfailed. The change is documentation only, so the suite is unaffected.
+- Internal links and anchors: a script checked every markdown link in the three
+  documents (129 links). All 11 new TOC anchors resolve against real headings
+  in `docs/README_EXPLAINED.md`, and every other in-document anchor still
+  resolves. The only unresolved links are pre-existing and expected: the
+  sibling `../../CrazySwarm2-with-Mocap` repository (not in this checkout), the
+  gitignored runtime files `../config.yaml` and `../.env`, and the `#Lnnn`
+  GitHub code line-anchors into `src/` files (these resolve on GitHub, not
+  against markdown headings). None of these come from this change.
+- ASD-STE100: the change is a list of navigation links. The link text is the
+  existing, already-compliant subsection headings. No new prose sentence, no
+  gerund as a noun, no em dash, and no slash in prose was added.
+
+**Verdict: CONTINUE.** This completes the deep navigation of the most-referenced
+section. The core of Task A (a table of contents, cross-links, and now reachable
+traps) is in place, and the work is at the point of diminishing returns. The
+other top-level sections (for example section 8, `Docker 4: mission, the brain`)
+also have unnumbered `###` subsections that could be nested, but a table of
+contents that lists every subsection loses its value as a compact scan. The next
+run should weigh one such section against `COMPLETE: STOP`, and nest its
+subsections only if that single section is long and central enough to need it.
+If no such real, low-risk improvement is found, stop and record
+`COMPLETE: STOP`.
+
+---
+
 ## 2026-10-06
 
 **Changed:** One focused Task A improvement. Added a compact table of contents
