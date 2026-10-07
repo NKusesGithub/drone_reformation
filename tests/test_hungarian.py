@@ -109,3 +109,104 @@ def test_backward_penalty_steers_a_drone_to_a_forward_slot():
 
     assert without["assignment"][0]["slot_idx"] == 0
     assert with_penalty["assignment"][0]["slot_idx"] == 1
+
+
+# --------------------------------------------------------------------------
+# front_axis: which way the formation faces
+# --------------------------------------------------------------------------
+
+
+def test_front_drones_are_ranked_to_move_first_along_x():
+    """The cascade follows front_axis: with '+x' the drone at the largest x
+    is the one that must vacate its slot first."""
+    result = _assign(
+        [1, 2, 3],
+        {1: (-1.0, 0.0), 2: (1.0, 0.0), 3: (0.0, 0.0)},
+        [(-1.0, 0.0), (1.0, 0.0), (0.0, 0.0)],
+        front_axis="+x",
+    )
+
+    assert [item["drone_id"] for item in result["assignment"]] == [2, 3, 1]
+    assert [item["cascade_rank"] for item in result["assignment"]] == [1, 2, 3]
+
+
+def test_a_long_forward_jump_along_x_is_penalised():
+    """The rear-drone-jumps-to-the-front case, turned a quarter turn. Slot 0 is
+    3 m ahead and slot 1 is 5 m behind, so distance alone takes the front slot;
+    the forward-jump penalty has to be the thing that sends it to the rear."""
+    positions = {1: (-3.0, 0.0)}
+    targets = [(0.0, 0.0), (-8.0, 0.0)]
+
+    free = _assign([1], positions, targets, front_axis="+x", forward_jump_penalty=0.0)
+    penalised = _assign(
+        [1],
+        positions,
+        targets,
+        front_axis="+x",
+        spacing=0.5,
+        forward_jump_penalty=1000.0,
+    )
+
+    assert free["assignment"][0]["slot_idx"] == 0
+    assert penalised["assignment"][0]["slot_idx"] == 1
+    assert penalised["assignment"][0]["delta_front"] == pytest.approx(-5.0)
+
+
+def test_the_front_axis_only_changes_which_axis_is_forward():
+    """The +x answer is the +y answer with every coordinate swapped."""
+    kwargs = {"spacing": 0.5, "forward_jump_penalty": 1000.0}
+    on_y = _assign(
+        [1, 2],
+        {1: (0.0, -3.0), 2: (0.0, 0.0)},
+        [(0.0, 0.0), (0.0, -8.0)],
+        front_axis="+y",
+        **kwargs,
+    )
+    on_x = _assign(
+        [1, 2],
+        {1: (-3.0, 0.0), 2: (0.0, 0.0)},
+        [(0.0, 0.0), (-8.0, 0.0)],
+        front_axis="+x",
+        **kwargs,
+    )
+
+    assert [item["slot_idx"] for item in on_y["assignment"]] == [
+        item["slot_idx"] for item in on_x["assignment"]
+    ]
+    assert [item["cascade_rank"] for item in on_y["assignment"]] == [
+        item["cascade_rank"] for item in on_x["assignment"]
+    ]
+
+
+def test_the_backward_penalty_follows_the_front_axis():
+    positions = {1: (0.0, 0.0)}
+    targets = [(-0.5, 0.0), (3.0, 0.0)]
+
+    without = _assign([1], positions, targets, front_axis="+x", forward_jump_penalty=0.0)
+    with_penalty = _assign(
+        [1],
+        positions,
+        targets,
+        front_axis="+x",
+        forward_jump_penalty=0.0,
+        backward_penalty=1000.0,
+        backward_threshold=0.0,
+    )
+
+    assert without["assignment"][0]["slot_idx"] == 0
+    assert with_penalty["assignment"][0]["slot_idx"] == 1
+
+
+def test_the_default_front_axis_is_plus_y():
+    result = _assign([1], {1: (0.0, 0.0)}, [(1.0, 2.0)])
+
+    assert result["front_axis"] == "+y"
+    assert result["assignment"][0]["delta_front"] == pytest.approx(2.0)
+
+
+def test_an_unknown_front_axis_is_rejected():
+    with pytest.raises(HTTPException) as exc:
+        _assign([1], {1: (0.0, 0.0)}, [(0.0, 0.0)], front_axis="+z")
+
+    assert exc.value.status_code == 400
+    assert "front_axis" in exc.value.detail

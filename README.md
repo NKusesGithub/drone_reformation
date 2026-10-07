@@ -93,6 +93,50 @@ waypoint. Then it polls the status endpoint of the same drone until the status i
 
 The default address of the upstream CrazySwarm API is `http://127.0.0.1:8011`.
 
+## What to install, and where
+
+This stack has parts in two folders. The two folders must be in the same parent folder, for
+example `~/S_ENG`. Install the parts in the sequence of this table.
+
+| Step | Part | Where it goes | How to install it |
+|---|---|---|---|
+| 1 | ROS 2: Humble on Ubuntu 22.04, or Jazzy on Ubuntu 24.04 | `/opt/ros/<distro>` | By hand. Refer to the CrazySwarm2-with-Mocap README, Setup Step 1 |
+| 2 | The CrazySwarm2 workspace: the ROS 2 server, the mocap driver and the preflight GUI | `~/S_ENG/CrazySwarm2-with-Mocap` | `./scripts/setup.sh` in that folder |
+| 3 | The bridge (`api/`) and its Python packages | `~/S_ENG/CrazySwarm2-with-Mocap/api` | `./scripts/install_bridge.sh --deps` in this folder, or **Install or update the bridge** on the **Stack** page |
+| 4 | Docker Engine, the Docker Compose v2 plugin, and `curl` | The host | Refer to <https://docs.docker.com/engine/install/ubuntu/>. Then `sudo apt install -y curl` |
+| 5 | Docker 1 to 6 | Docker images on the host | Nothing to do. `startup_all.sh` builds the images at the first start |
+| 6 | The Python packages of the dashboard | The user packages of `/usr/bin/python3` | `/usr/bin/python3 -m pip install --user fastapi uvicorn requests PyYAML` |
+
+Obey these rules for the installation:
+
+- **Install the bridge again after a new clone.** The bridge is not in the CrazySwarm2-with-Mocap
+  repository. `install_bridge.sh` copies it from the `kenneth` branch of the
+  Kojk-STEngg/CrazySwarm2 fork. A new clone of CrazySwarm2-with-Mocap does not have the `api/`
+  folder.
+- **Use `/usr/bin/python3` for the bridge and the dashboard.** Do not use a conda Python.
+  The bridge needs `rclpy`, and `rclpy` is only in the Python of ROS 2.
+- **Do not install `requirements/dashboard.txt` on the host.** Its fixed versions are for the
+  containers. On the host, they can replace the fastapi and uvicorn versions of the bridge.
+- **Add your user to the `docker` group.** The dashboard runs `docker compose` as your user.
+  Run `sudo usermod -aG docker $USER`. Then log out and log in again.
+- **Use Docker Compose v2.** The scripts use `docker compose`, not the old `docker-compose`.
+- **Docker 6 needs a desktop session.** Before a start with the visualizer, run
+  `xhost +local:docker`.
+
+If the CrazySwarm2 workspace is in a different folder, set `CRAZYFLIES_DIR` in `.env` to its
+`src/crazyswarm2/crazyflie/config` folder. Give `--repo DIR` to `install_bridge.sh`.
+
+### What starts each part
+
+`ros2 launch` does not start the bridge. Start it from the dashboard or by hand.
+
+| Part | What starts it |
+|---|---|
+| The ROS 2 server, the mocap driver and the preflight GUI | `ros2 launch crazyflie launch.py`, or **Start the stack** in the CrazySwarm2 mission console |
+| The bridge on `127.0.0.1:8011` | **Start the bridge** on the **Stack** page of the dashboard, or you in its own terminal. Start it after the ROS 2 server |
+| Docker 1 to 6 | The **Stack** page of the dashboard, or `./scripts/startup_all.sh` |
+| The dashboard | `./scripts/dashboard.sh` |
+
 ## The settings files
 
 Copy the default files:
@@ -101,6 +145,26 @@ Copy the default files:
 cp .env.example .env
 cp config.example.yaml config.yaml
 ```
+
+To change the settings, and to start and stop the stack, use the dashboard. Start it on the
+host before the stack:
+
+```bash
+./scripts/dashboard.sh               # then open http://localhost:8006
+```
+
+The dashboard has four pages: **Stack**, **Status**, **Config** and **Debug**. All four are
+available when the stack is stopped.
+
+- **Stack** starts the stack with `startup_all.sh` and stops it with `shutdown_all.sh`. It
+  shows each command before it runs, and it shows the output of the command.
+- **Config** changes `config.yaml`. The stack reads the changes when it starts.
+
+The Stack page sets `MISSION_AUTO_START=0` by default. Thus the drones do not take off until
+you push **Start mission**. The dashboard stays available after you stop the stack.
+
+Do not use `docker compose up dashboard` to get the dashboard. That command also starts
+mission, and with `MISSION_AUTO_START=1` mission makes the drones take off.
 
 The IDs in `config.yaml` must agree with the enabled drones in the CrazySwarm
 `crazyflies.yaml` file:
@@ -131,7 +195,8 @@ mission:
 ### `anchor_policy`: what happens to the front when a drone goes down
 
 `mission.anchor_policy` in `config.yaml` sets the position of the formation after a loss. The
-system always builds the shape from the front. The front row has the highest y value.
+system always builds the shape from the front. By default the front row has the highest y
+value. `mission.front_axis` changes this (refer to the next section).
 
 | Value | After a drone goes down |
 |---|---|
@@ -159,6 +224,37 @@ Two things change with `initial_anchor`:
 - **The width of the front row.** This changes only when few drones are left. The rows fill
   from the front at their first width. Thus a `[1, 2, 1]` front row keeps its single spot
   until only one drone is left.
+
+### `front_axis`: which direction is the front?
+
+`mission.front_axis` in `config.yaml` sets the direction the formation points to.
+
+| Value | Where the front row is | Where the other rows are |
+|---|---|---|
+| `+y` (default) | At the highest y value | Behind it, at `-spacing` steps in y. Each row is spread along x |
+| `+x` | At the highest x value | Behind it, at `-spacing` steps in x. Each row is spread along y |
+
+`+x` gives the same shape, but turned one quarter turn. The spacing between the spots and the
+safety gaps do not change. Use it when the long side of your flight area is the x axis.
+
+```yaml
+mission:
+  front_axis: +x
+```
+
+One value sets the direction for the full stack. Mission sends it to Docker 3, which builds
+the spots, and to Docker 2, which uses the same direction for the forward-jump penalty, the
+backward penalty, and the front-to-back cascade order.
+
+The visualizer always shows +y at the top of the window. Thus with `front_axis: +x` the
+formation points to the right of the window, not up.
+
+Mission reads `config.yaml` one time, when it starts. Thus restart it after you change the
+value:
+
+```bash
+docker compose restart mission
+```
 
 ### `MISSION_AUTO_START`: does the stack take off without a command?
 
@@ -195,26 +291,48 @@ TO FLY.
 
 ## Start sequence
 
-The CrazySwarm bridge is not a part of that repository. Copy it in one time:
+Do the one-time installation first. Refer to [What to install, and where](#what-to-install-and-where).
+
+1. Start the CrazySwarm2 hardware stack. Use `ros2 launch crazyflie launch.py`, or the
+   CrazySwarm2 mission console.
+
+2. Start the dashboard. Then open **http://localhost:8006**.
+
+   ```bash
+   ./scripts/dashboard.sh
+   ```
+
+3. On the **Stack** page, push **Start the bridge**. The **Health** line must show `ready`.
+
+4. On the **Stack** page, push **Start the stack**.
+
+To start the bridge without the dashboard, run these lines in their own terminal. Keep the
+terminal open.
 
 ```bash
-./scripts/install_bridge.sh --deps
+source ~/S_ENG/CrazySwarm2-with-Mocap/install/setup.bash
+cd ~/S_ENG/CrazySwarm2-with-Mocap
+/usr/bin/python3 -m uvicorn api.app:app --host 127.0.0.1 --port 8011
 ```
 
-Start the CrazySwarm simulator and API first. Then make sure that they answer:
+Then make sure that the bridge answers. `/health` must give `"ready": true`.
 
 ```bash
 curl http://127.0.0.1:8011/health
 curl http://127.0.0.1:8011/drones/status | python3 -m json.tool
 ```
 
-Then start this stack:
+The **Stack** page also stops a bridge that you started by hand. It stops a process on port
+8011 only if that process is the bridge.
+
+To start the stack without the dashboard, use the script. This also starts a dashboard
+container on port 8006. That container has no Stack page.
 
 ```bash
 ./scripts/startup_all.sh --crazyswarm
 ```
 
-Then open **http://localhost:8006** for the dashboard. It has buttons to start the mission, to
+The dashboard has buttons to start the mission, to
 down a drone, to reform, and to land all drones. It also shows the live drone status and a map.
 
 To include Docker 6:
@@ -317,14 +435,15 @@ src/                        first-party Python, one package for each container
   mission_service/          Docker 4: orchestration
   downed_simulator_service/ Docker 5: fault injection
   visualizer_service/       Docker 6: OpenCV viewer
-  dashboard_service/        web page: Status tab (buttons and live state) and Config tab
-                            (edit config.yaml, copy drone IDs from CrazySwarm)
+  dashboard_service/        web page: Stack (start and stop the stack), Status (buttons and
+                            live state), Config (edit config.yaml) and Debug
   drone_common/             config loader and HTTP client for 1, 4 and 5
 third_party/airsim/         vendored AirSim 1.8.1 client, for the old DRONE_MODE=airsim only
 tests/                      pytest suite (pip install -r requirements/dev.txt; pytest)
 docker/                     one Dockerfile for each service
 requirements/               one requirements file for each service, and base.txt and dev.txt
-scripts/                    startup_all.sh, shutdown_all.sh, swarm_config.py
+scripts/                    dashboard.sh, startup_all.sh, shutdown_all.sh, install_bridge.sh,
+                            swarm_config.py
 docs/                       QUICKSTART.md (run-book for hardware),
                             README_EXPLAINED.md (internal operation)
 artefacts/                  output of the visualizer, in .gitignore

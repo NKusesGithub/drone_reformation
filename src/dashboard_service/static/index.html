@@ -11,6 +11,8 @@
 <header>
   <h1>Drone Reformation</h1>
   <span id="mode" class="badge">mode: …</span>
+  <span id="light-bridge" class="light">Bridge</span>
+  <span id="light-stack" class="light">Stack</span>
   <span id="light-control" class="light">Docker 1</span>
   <span id="light-mission" class="light">Mission</span>
   <span id="light-simulator" class="light">Simulator</span>
@@ -19,13 +21,119 @@
 </header>
 
 <nav class="tabs">
-  <button data-tab="status" class="active">Status</button>
+  <button data-tab="stack" class="active">Stack</button>
+  <button data-tab="status">Status</button>
   <button data-tab="config">Config</button>
   <button data-tab="debug">Debug</button>
 </nav>
 
 <main>
-  <section id="tab-status" class="tab active">
+  <section id="tab-stack" class="tab active">
+  <p id="stack-hostonly" class="error wide" hidden>
+    This dashboard runs inside the stack, so it cannot start or stop it.
+    Run <code>./scripts/dashboard.sh</code> on the host to get the Stack page.
+  </p>
+
+  <section class="card">
+    <h2>CrazySwarm API bridge <span class="tag">stays running</span></h2>
+    <p class="why">The HTTP bridge between CrazySwarm and this stack: Docker 1 talks only to it.
+      Start it <b>after</b> <code>ros2 launch</code> is up, or <code>/health</code> reports
+      "ready": false. Restart it between runs: it never clears a drone's <code>down</code> mark.</p>
+    <dl class="facts" id="br-facts"></dl>
+    <p id="br-warn" class="warn-box" hidden></p>
+    <div class="cmdline" id="st-bridge-cmd">building the command&hellip;</div>
+    <div class="buttons">
+      <button id="btn-bridge-start" class="primary">Start the bridge</button>
+      <button id="btn-bridge-stop">Stop the bridge</button>
+      <button id="btn-bridge-copy">Copy command</button>
+    </div>
+    <details class="teaches">
+      <summary>Install or update the bridge</summary>
+      <p class="why">Copies <code>api/</code> from the <code>kenneth</code> branch of
+        Kojk-STEngg/CrazySwarm2 into the CrazySwarm2 workspace (staged, not committed), and
+        pip-installs its packages for <code>/usr/bin/python3</code>. Needs the network.</p>
+      <div class="cmdline" id="st-install-cmd">building the command&hellip;</div>
+      <div class="buttons"><button id="btn-bridge-install">Install or update the bridge</button></div>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>Start the stack <span class="tag">stays running</span></h2>
+    <p class="why">Builds and starts Docker 1&ndash;5 through <code>startup_all.sh</code>, then waits
+      until each one answers <code>/health</code>. The CrazySwarm side (ros2 launch and the API
+      bridge on 8011) is not started here: start
+      ros2 launch in the CrazySwarm mission console, then the bridge on the left.</p>
+    <div class="params">
+      <div class="param"><label for="st-mode">Drone mode</label>
+        <select id="st-mode" data-stack="start" data-key="mode">
+          <option>crazyswarm</option><option>mock</option><option>airsim</option></select>
+        <span class="meta">crazyswarm = real drones. mock = software only. Written to .env.</span></div>
+      <div class="param"><label for="st-auto">Take off when mission starts</label>
+        <select id="st-auto" data-stack="start" data-key="auto_start">
+          <option value="0">0 - wait for Start mission</option>
+          <option value="1">1 - take off at once</option></select>
+        <span class="meta">MISSION_AUTO_START for this start only; .env is not changed.</span></div>
+      <div class="param"><label for="st-build">Rebuild images</label>
+        <select id="st-build" data-stack="start" data-key="build">
+          <option>True</option><option>False</option></select>
+        <span class="meta">True after you change code under src/. False starts faster.</span></div>
+      <div class="param"><label for="st-vis">OpenCV visualizer</label>
+        <select id="st-vis" data-stack="start" data-key="visualizer">
+          <option>False</option><option>True</option></select>
+        <span class="meta">Docker 6, a desktop window.</span></div>
+    </div>
+    <div class="cmdline" id="st-start-cmd">building the command&hellip;</div>
+    <p id="st-start-warn" class="warn-box" hidden></p>
+    <div class="buttons">
+      <button id="btn-stack-start" class="primary">Start the stack</button>
+      <button id="btn-stack-start-copy">Copy command</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Stop the stack <span class="tag tag-flight">drones move</span></h2>
+    <p class="why">Runs <code>shutdown_all.sh</code>: asks mission to land and disarm every drone,
+      then <code>docker compose down</code>. A start that is still running is cancelled first.
+      This page stays up: it is not one of the containers.</p>
+    <div class="params">
+      <div class="param"><label for="sp-land">Land the drones first</label>
+        <select id="sp-land" data-stack="stop" data-key="land">
+          <option>True</option><option>False</option></select>
+        <span class="meta">False only when nothing is flying: it leaves airborne drones with no controller.</span></div>
+    </div>
+    <div class="cmdline" id="st-stop-cmd">building the command&hellip;</div>
+    <div class="buttons">
+      <button id="btn-stack-stop" class="danger">Stop the stack</button>
+      <button id="btn-stack-stop-copy">Copy command</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Containers</h2>
+    <p class="filemeta" id="st-ps-cmd"></p>
+    <p id="st-ps-error" class="error" hidden></p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Service</th><th>State</th><th>Status</th><th>Ports</th></tr></thead>
+        <tbody id="st-ps-body"></tbody>
+      </table>
+    </div>
+    <h3>From .env</h3>
+    <dl class="facts" id="st-env"></dl>
+  </section>
+
+  <section class="card wide">
+    <h2>Output</h2>
+    <div class="summary" id="st-job-summary">No start or stop has run from this page yet.</div>
+    <div class="buttons">
+      <select id="st-job-pick" aria-label="Which run to show"></select>
+      <button id="btn-stack-cancel">Cancel this run</button>
+    </div>
+    <pre id="st-job-out" class="diff output"></pre>
+  </section>
+  </section>
+
+  <section id="tab-status" class="tab">
   <section class="card">
     <h2>Mission</h2>
     <dl class="facts">
@@ -42,6 +150,12 @@
       <button id="btn-reform">Reform now</button>
       <button id="btn-land" class="danger">Land all &amp; stop</button>
     </div>
+    <dl class="cmds">
+      <dt>Start mission</dt><dd class="cmdline" id="cmd-btn-start">building the command&hellip;</dd>
+      <dt>Stop mission loop</dt><dd class="cmdline" id="cmd-btn-stop">building the command&hellip;</dd>
+      <dt>Reform now</dt><dd class="cmdline" id="cmd-btn-reform">building the command&hellip;</dd>
+      <dt>Land all &amp; stop</dt><dd class="cmdline" id="cmd-btn-land">building the command&hellip;</dd>
+    </dl>
     <p class="hint">
       <b>Start</b> takes off and flies the first formation, then watches for lost drones.
       <b>Stop</b> only stops watching; drones keep hovering.
@@ -64,6 +178,11 @@
       <input id="random-count" type="number" min="1" value="1" aria-label="How many random drones to down">
       <button id="btn-random" class="danger">Down random</button>
     </div>
+    <dl class="cmds">
+      <dt>Down random</dt><dd class="cmdline" id="cmd-btn-random">building the command&hellip;</dd>
+      <dt id="cmd-down-label">Down (per drone)</dt>
+      <dd class="cmdline" id="cmd-down">shown once a drone is listed</dd>
+    </dl>
     <p class="hint">Downing a drone lands and disarms it. Mission then rebuilds the formation around the others.</p>
   </section>
 

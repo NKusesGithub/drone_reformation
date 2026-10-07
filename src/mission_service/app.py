@@ -38,6 +38,10 @@ MAX_MOVE_SECONDS_PER_DRONE = float(mission_cfg.get("max_move_seconds_per_drone",
 BACKWARD_PENALTY = float(mission_cfg.get("backward_penalty", 0.0))
 BACKWARD_THRESHOLD = float(mission_cfg.get("backward_threshold", 0.0))
 ANCHOR_POLICY = str(mission_cfg.get("anchor_policy", "active_centroid"))
+# Which way the formation faces: "+y" (rows step back along -y) or "+x" (rows
+# step back along -x). Passed to both the formation and Hungarian services so
+# the shape and the cascade order agree on where the front is.
+FRONT_AXIS = str(mission_cfg.get("front_axis", "+y"))
 
 control = RemoteDroneControlClient(
     DRONE_CONTROL_URL,
@@ -203,6 +207,7 @@ def _call_formation(downed_count: int) -> Dict[str, Any]:
             "old_formation": OLD_FORMATION,
             "downed_drones": int(downed_count),
             "spacing": FORMATION_SPACING,
+            "front_axis": FRONT_AXIS,
         },
     )
 
@@ -226,6 +231,7 @@ def _call_hungarian(
             "backward_threshold": BACKWARD_THRESHOLD,
             "cascade_front_first": True,
             "spacing": FORMATION_SPACING,
+            "front_axis": FRONT_AXIS,
         },
     )
 
@@ -496,6 +502,7 @@ def status() -> Dict[str, Any]:
             "initial_formation_done": _initial_formation_done,
             "last_downed": sorted(_last_downed),
             "last_error": _last_error,
+            "front_axis": FRONT_AXIS,
             "urls": {
                 "drone_control": DRONE_CONTROL_URL,
                 "formation": FORMATION_SERVICE_URL,

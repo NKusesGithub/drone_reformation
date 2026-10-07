@@ -37,7 +37,7 @@ drone_reformation [README](../README.md) ·
   - [Step 0: Make the drone IDs agree](#step-0-make-the-drone-ids-agree)
   - [Step 1: Physical pre-flight check](#step-1-physical-pre-flight-check)
   - [Step 2: Start the CrazySwarm2 hardware stack](#step-2-start-the-crazyswarm2-hardware-stack)
-  - [Step 3: Check the bridge, then start drone_reformation](#step-3-check-the-bridge-then-start-drone_reformation)
+  - [Step 3: Start the bridge, then start drone_reformation](#step-3-start-the-bridge-then-start-drone_reformation)
   - [Step 4: Fly](#step-4-fly)
   - [Step 5: Land and shut down](#step-5-land-and-shut-down)
 - [Docker container commands](#docker-container-commands)
@@ -294,8 +294,8 @@ GUI. A DRONE THAT YOU CANNOT STOP CAN CAUSE INJURY.
    ros2 launch crazyflie launch.py
    ```
 
-   This one command starts the mocap node, the crazyflie server, RViz, the preflight GUI, and
-   the bridge together.
+   This one command starts the mocap node, the crazyflie server, RViz and the preflight GUI.
+   It does **not** start the bridge. Start the bridge in Step 3.
 
 2. Read the preflight GUI. Do a check of each item below before you arm any drone.
 
@@ -308,20 +308,10 @@ GUI. A DRONE THAT YOU CANNOT STOP CAN CAUSE INJURY.
 
 The full checklist is in [RUNNING §C](../../CrazySwarm2-with-Mocap/docs/RUNNING.md).
 
-### Step 3: Check the bridge, then start drone_reformation
+### Step 3: Start the bridge, then start drone_reformation
 
-1. Make sure that the bridge answers. Use a second terminal.
-
-   ```bash
-   curl http://127.0.0.1:8011/health
-   curl http://127.0.0.1:8011/drones/status | python3 -m json.tool
-   ```
-
-   `/health` must give `"ready": true`. `/drones/status` must show live positions. If either
-   command fails, stop here. Correct the CrazySwarm2-with-Mocap launch before you go on.
-
-   If the bridge does not answer, start it by hand in its own terminal. All of the three lines
-   are necessary:
+1. Start the bridge in a second terminal. Keep the terminal open. All of the three lines are
+   necessary:
 
    ```bash
    source ~/S_ENG/CrazySwarm2-with-Mocap/install/setup.bash
@@ -335,7 +325,18 @@ The full checklist is in [RUNNING §C](../../CrazySwarm2-with-Mocap/docs/RUNNING
    | `cd` | `ModuleNotFoundError: No module named 'api'` |
    | `/usr/bin/python3` | `rclpy` is missing, or you get a conda error |
 
-2. Go to the drone_reformation folder. Start the stack against the real hardware.
+2. Make sure that the bridge answers. Use a third terminal.
+
+   ```bash
+   curl http://127.0.0.1:8011/health
+   curl http://127.0.0.1:8011/drones/status | python3 -m json.tool
+   ```
+
+   `/health` must give `"ready": true`. `/drones/status` must show live positions. If either
+   command fails, stop here. Correct the bridge or the CrazySwarm2-with-Mocap launch before
+   you go on.
+
+3. Go to the drone_reformation folder. Start the stack against the real hardware.
 
    WARNING: WITH `MISSION_AUTO_START=1`, THIS COMMAND ARMS THE DRONES, TAKES OFF, AND FLIES THE
    FIRST FORMATION IMMEDIATELY. KEEP PERSONS AWAY FROM THE FLIGHT AREA.
@@ -352,9 +353,9 @@ The full checklist is in [RUNNING §C](../../CrazySwarm2-with-Mocap/docs/RUNNING
    ./scripts/startup_all.sh --crazyswarm --with-visualizer
    ```
 
-3. Open the dashboard in a browser at `http://localhost:8006`.
+4. Open the dashboard in a browser at `http://localhost:8006`.
 
-4. Make sure that drone-control is healthy.
+5. Make sure that drone-control is healthy.
 
    ```bash
    curl http://localhost:8001/health | python3 -m json.tool
@@ -415,11 +416,11 @@ drone, and if each `last_move` entry gives `arrived`.
    ./scripts/shutdown_all.sh
    ```
 
-3. Go to Terminal 1. Push Ctrl-C to stop the CrazySwarm2-with-Mocap launch. Push Ctrl-C in the
-   bridge terminal too, if you started the bridge by hand.
-4. Make sure that each drone LED returns to green. A green LED means that no program holds the
+3. Go to the bridge terminal. Push Ctrl-C to stop the bridge.
+4. Go to Terminal 1. Push Ctrl-C to stop the CrazySwarm2-with-Mocap launch.
+5. Make sure that each drone LED returns to green. A green LED means that no program holds the
    drone.
-5. Power off each drone. Recharge each battery that you used.
+6. Power off each drone. Recharge each battery that you used.
 
 #### Between two runs
 

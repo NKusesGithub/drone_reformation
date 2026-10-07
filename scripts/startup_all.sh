@@ -8,6 +8,7 @@ BUILD=1
 DETACHED=1
 WAIT=1
 WITH_VISUALIZER=0
+WITH_DASHBOARD=1
 SERVICES=(drone-control hungarian formation mission downed-simulator dashboard)
 
 usage() {
@@ -21,6 +22,8 @@ Options:
   --no-build          Skip docker compose build
   --foreground        Run docker compose up in foreground
   --with-visualizer   Also start Docker 6 OpenCV visualizer profile
+  --no-dashboard      Do not start the dashboard container (the host dashboard,
+                      ./scripts/dashboard.sh, already serves port 8006)
   --no-wait           Do not wait for health endpoints
   --compose FILE      Use a different compose file
   --env FILE          Use a different env file
@@ -67,6 +70,7 @@ while [[ $# -gt 0 ]]; do
     --no-build) BUILD=0; shift ;;
     --foreground) DETACHED=0; shift ;;
     --with-visualizer) WITH_VISUALIZER=1; shift ;;
+    --no-dashboard) WITH_DASHBOARD=0; shift ;;
     --no-wait) WAIT=0; shift ;;
     --compose) COMPOSE_FILE="$2"; shift 2 ;;
     --env) ENV_FILE="$2"; shift 2 ;;
@@ -75,6 +79,12 @@ while [[ $# -gt 0 ]]; do
     *) fail "Unknown option: $1" ;;
   esac
 done
+
+if (( ! WITH_DASHBOARD )); then
+  KEEP=()
+  for s in "${SERVICES[@]}"; do [[ "$s" == dashboard ]] || KEEP+=("$s"); done
+  SERVICES=("${KEEP[@]}")
+fi
 
 need_cmd docker
 need_cmd curl
@@ -122,7 +132,9 @@ if (( WAIT )) && (( DETACHED )); then
   wait_health "Docker 3 formation" "http://localhost:8003/health"
   wait_health "Docker 4 mission" "http://localhost:8004/health"
   wait_health "Docker 5 downed-simulator" "http://localhost:8005/health"
-  wait_health "Dashboard" "http://localhost:8006/health"
+  if (( WITH_DASHBOARD )); then
+    wait_health "Dashboard" "http://localhost:8006/health"
+  fi
 fi
 
 cat <<EOF

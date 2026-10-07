@@ -78,23 +78,48 @@ function log(message, kind = "") {
 
 // ------------------------------------------------------------------ actions
 
+// What each Status-page button sends: [method, service, path, body]. The button
+// and the command shown under it both come from here, so they cannot disagree.
+const downRequest = (id) => ["POST", "simulator", "/down", { drone_ids: [id], disarm: true }];
+const REQUESTS = {
+  "btn-start": () => ["POST", "mission", "/start", { setup_hover: true }],
+  "btn-stop": () => ["POST", "mission", "/stop"],
+  "btn-reform": () => ["POST", "mission", "/reform_now"],
+  "btn-land": () => ["POST", "mission", "/shutdown", { land: true, disarm: true, release_api_control: true }],
+  "btn-random": () => ["POST", "simulator", "/down",
+                       { count: parseInt($("random-count").value, 10) || 1, disarm: true }],
+};
+
+// Ask the backend for the curl form of a request (it knows the real upstream URLs).
+async function showCommand(boxId, [method, service, path, body]) {
+  const box = $(boxId);
+  try {
+    const response = await fetch("/api/command", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method, service, path, body }),
+    });
+    const data = await response.json();
+    box.textContent = response.ok ? data.cmdline : `preview failed: ${data.detail}`;
+  } catch (err) { box.textContent = `preview failed: ${err.message}`; }
+}
+
 const actions = {
   "btn-start": {
-    run: () => api("POST", "mission", "/start", { setup_hover: true }),
+    run: () => api(...REQUESTS["btn-start"]()),
     confirm: () => state.mode === "mock"
       ? "Start the mission in mock mode (no real drones)?"
       : `Start the mission?\n\nMode: ${state.mode || "unknown"}.\n` +
         "This arms and takes off every configured drone, then flies the first formation.",
   },
   "btn-stop": {
-    run: () => api("POST", "mission", "/stop"),
+    run: () => api(...REQUESTS["btn-stop"]()),
   },
   "btn-reform": {
-    run: () => api("POST", "mission", "/reform_now"),
+    run: () => api(...REQUESTS["btn-reform"]()),
     confirm: () => "Rebuild the formation around the drones that are not down, and fly them there now?",
   },
   "btn-land": {
-    run: () => api("POST", "mission", "/shutdown", { land: true, disarm: true, release_api_control: true }),
+    run: () => api(...REQUESTS["btn-land"]()),
     confirm: () => "Land and disarm every drone, and stop the mission loop?",
   },
   "btn-config-check": {
@@ -110,7 +135,7 @@ const actions = {
     run: () => {
       const count = parseInt($("random-count").value, 10);
       if (!(count >= 1)) throw new Error("enter how many drones to down (1 or more)");
-      return api("POST", "simulator", "/down", { count, disarm: true });
+      return api(...REQUESTS["btn-random"]());
     },
     confirm: () => `Down ${$("random-count").value} random drone(s)? They land and disarm.`,
   },
@@ -269,7 +294,7 @@ function renderDrones() {
     button.disabled = drone.status === "down" || busy.has(key);
     button.addEventListener("click", () => runAction(
       key, `Down drone ${drone.drone_id}`,
-      () => api("POST", "simulator", "/down", { drone_ids: [drone.drone_id], disarm: true }),
+      () => api(...downRequest(drone.drone_id)),
       `Down drone ${drone.drone_id}? It lands and disarms, and mission rebuilds the formation.`));
 
     const noPose = drone.position_received === false;
@@ -694,11 +719,13 @@ function every(ms, fn) {
 }
 
 syncButtons();   // Apply starts disabled until Check has shown what would change.
+
 every(1000, pollDrones);
 every(1000, pollMission);
 every(2000, pollResults);
 every(3000, pollHealth);
 every(4000, pollDebug);
+every(1000, pollStack);
 log("Dashboard opened. Status refreshes every second.");
 
 // ------------------------------------------------------------------ tabs
@@ -710,6 +737,7 @@ function showTab(name) {
   for (const section of document.querySelectorAll("main .tab")) {
     section.classList.toggle("active", section.id === `tab-${name}`);
   }
+  history.replaceState(null, "", `#${name}`);   // deep-linkable, like the CrazySwarm console
   if (name === "config" && !configLoaded) {
     configLoaded = true;
     runAction("btn-params-reload", "Load settings", loadParameters, null);
@@ -721,6 +749,12 @@ function showTab(name) {
 for (const button of document.querySelectorAll(".tabs button")) {
   button.addEventListener("click", () => showTab(button.dataset.tab));
 }
+
+// Every page is reachable from the start; the URL hash picks which one opens.
+window.addEventListener("load", () => {
+  const want = location.hash.slice(1);
+  if (want && document.querySelector(`.tabs button[data-tab="${want}"]`)) showTab(want);
+});
 
 // ------------------------------------------------------- config: settings
 
@@ -888,3 +922,236 @@ wire("btn-raw-save", {
   confirm: () => "Save config.yaml as shown?\n\nIt is checked for valid YAML first, and a backup is kept.",
 });
 syncButtons();
+
+// ------------------------------------------------------------------ stack
+// Start/stop run startup_all.sh / shutdown_all.sh on the host. The command shown
+// is fetched from the backend that will run it, never built twice.
+
+const stackUi = { hostMode: null, jobs: [], shown: null, after: 0, starting: false, env: {} };
+
+function stackValues(action) {
+  const values = {};
+  for (const node of document.querySelectorAll(`[data-stack="${action}"]`)) values[node.dataset.key] = node.value;
+  return values;
+}
+
+async function stackPost(path, body) {
+  const response = await fetch(`/api/stack${path}`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}),
+  });
+  let data = null;
+  try { data = await response.json(); } catch { data = null; }
+  if (!response.ok) throw new Error((data && data.detail) || response.statusText);
+  return data;
+}
+
+async function refreshStackPreview(action) {
+  const box = $(`st-${action}-cmd`);
+  try {
+    const r = await stackPost("/preview", { action, values: stackValues(action) });
+    box.textContent = r.cmdline;
+    box.dataset.cmd = r.cmdline;
+  } catch (err) { box.textContent = `preview failed: ${err.message}`; }
+  if (action === "start") renderStartWarning();
+}
+
+function renderStartWarning() {
+  const v = stackValues("start");
+  const notes = [];
+  if (v.mode === "crazyswarm" && !stackUi.bridgeReady) {
+    notes.push("The bridge is not ready, so Docker 1 will report degraded. Start the bridge first.");
+  }
+  if (v.auto_start === "1" && v.mode !== "mock") {
+    notes.push("Take-off is set to 1: as soon as mission starts, every configured drone " +
+      "arms and takes off. Use 0 on a hardware day and press Start mission when ready.");
+  }
+  $("st-start-warn").hidden = !notes.length;
+  $("st-start-warn").textContent = notes.join(" ");
+}
+
+function takeoffWarning(v) {
+  return v.auto_start === "1" && v.mode !== "mock";
+}
+
+async function stackStart() {
+  const v = stackValues("start");
+  const cmd = $("st-start-cmd").dataset.cmd || "";
+  let text = `Start the stack?\n\nThis runs:\n${cmd}`;
+  if (takeoffWarning(v)) text = `THE DRONES WILL TAKE OFF.\n\nMode ${v.mode}, auto take-off 1: every ` +
+    `configured drone arms and flies as soon as mission starts.\n\nThis runs:\n${cmd}`;
+  if (!window.confirm(text)) return;
+  try {
+    const job = await stackPost("/start", { values: v });
+    log(`Stack start: ${job.cmdline}`, "ok");
+    showJob(job.id);
+  } catch (err) { log(`Stack start failed: ${err.message}`, "bad"); window.alert(err.message); }
+}
+
+async function stackStop() {
+  const v = stackValues("stop");
+  const cmd = $("st-stop-cmd").dataset.cmd || "";
+  const text = v.land === "True"
+    ? `Stop the stack?\n\nMission lands and disarms every drone, then the containers stop.\n\nThis runs:\n${cmd}`
+    : `Stop WITHOUT landing?\n\nAny drone in the air keeps its last command with no controller.\n\nThis runs:\n${cmd}`;
+  if (!window.confirm(text)) return;
+  try {
+    const job = await stackPost("/stop", { values: v });
+    log(`Stack stop: ${job.cmdline}`, "ok");
+    showJob(job.id);
+  } catch (err) { log(`Stack stop failed: ${err.message}`, "bad"); window.alert(err.message); }
+}
+
+function showJob(id) {
+  stackUi.shown = id;
+  stackUi.after = 0;
+  $("st-job-out").textContent = "";
+  $("st-job-pick").value = id;
+}
+
+function renderBridge(b) {
+  if (!b) return;
+  const h = b.health || {};
+  const ready = h.ready === true || (b.health && h.ready === undefined && h.status === "ok");
+  const state = b.job ? `running (${b.job}, started here)`
+    : b.listening ? "running (started outside this page)" : "not running";
+  const rows = [
+    ["State", state],
+    ["Health", b.listening ? (b.health ? (ready ? "ready" : "answering, NOT ready")
+                                       : `no answer: ${b.error || "?"}`) : "—"],
+    ["Port", String(b.port)],
+    ["Installed", b.installed ? `${b.workspace}/api` : "NO"],
+    ["Check", b.health_cmd],
+  ];
+  $("br-facts").replaceChildren(...rows.flatMap(([k, v]) => [el("dt", { text: k }), el("dd", { text: v })]));
+  $("light-bridge").textContent = ready ? "Bridge: ready" : b.listening ? "Bridge: not ready" : "Bridge: down";
+  setLight("bridge", ready, state);
+  const warn = $("br-warn");
+  warn.hidden = b.installed && !(b.listening && !ready);
+  warn.textContent = !b.installed
+    ? "The bridge is not installed: open Install or update the bridge below."
+    : "The bridge answers but is not ready: it cannot see the ROS services. Is ros2 launch up?";
+  $("btn-bridge-start").disabled = !b.installed || b.listening;
+  $("btn-bridge-stop").disabled = !b.listening && !b.job;
+  stackUi.bridgeReady = ready;
+}
+
+async function bridgeAction(path, confirmText, label) {
+  if (confirmText && !window.confirm(confirmText)) return;
+  try {
+    const r = await stackPost(path, {});
+    log(`${label}: ${r.cmdline || "done"}`, "ok");
+    if (r.id) showJob(r.id);
+  } catch (err) { log(`${label} failed: ${err.message}`, "bad"); window.alert(err.message); }
+}
+
+function renderStack(data) {
+  $("stack-hostonly").hidden = data.host_mode !== false;
+  for (const id of ["btn-stack-start", "btn-stack-stop"]) $(id).disabled = data.host_mode === false;
+  if (!data.host_mode) { setLight("stack", false, "not in host mode"); return; }
+
+  const ps = data.containers || {};
+  $("st-ps-cmd").textContent = ps.cmdline || "";
+  $("st-ps-error").hidden = !ps.error;
+  $("st-ps-error").textContent = ps.error || "";
+  const rows = ps.containers || [];
+  $("st-ps-body").replaceChildren(...(rows.length ? rows.map((c) => el("tr", {},
+    el("td", { text: c.Service || c.Name }),
+    el("td", {}, pill(c.State === "running" ? "running" : (c.State || "unknown"))),
+    el("td", { text: c.Status || "" }),
+    el("td", { text: c.Ports || "" }))) : [el("tr", {}, el("td", { colspan: "4", text: "No containers: the stack is down." }))]));
+  const up = data.running_count || 0;
+  setLight("stack", up > 0, `${up} containers running`);
+  $("light-stack").textContent = up ? `Stack: ${up} up` : "Stack: down";
+
+  renderBridge(data.bridge);
+  stackUi.env = data.env || {};
+  $("st-env").replaceChildren(...Object.entries(stackUi.env).flatMap(([k, v]) =>
+    [el("dt", { text: k }), el("dd", { text: v || "(empty)" })]));
+  if (!stackUi.defaulted) {   // form starts from .env, then is the user's
+    stackUi.defaulted = true;
+    if (stackUi.env.DRONE_MODE) $("st-mode").value = stackUi.env.DRONE_MODE;
+    refreshStackPreview("start");
+    refreshStackPreview("stop");
+    refreshStackPreview("bridge");
+    refreshStackPreview("install");
+  }
+
+  renderStartWarning();
+  stackUi.jobs = data.jobs || [];
+  const pick = $("st-job-pick");
+  const want = stackUi.shown;
+  pick.replaceChildren(...stackUi.jobs.slice().reverse().map((j) =>
+    el("option", { value: j.id, text: `${j.id} ${j.kind} - ${j.state} - ${time(j.started)}` })));
+  pick.hidden = !stackUi.jobs.length;
+  if (!want && stackUi.jobs.length) showJob(stackUi.jobs[stackUi.jobs.length - 1].id);
+  else if (want) pick.value = want;
+  const job = stackUi.jobs.find((j) => j.id === stackUi.shown);
+  $("btn-stack-cancel").hidden = !(job && job.state === "running");
+  if (job) {
+    $("st-job-summary").replaceChildren(fact("Run", `${job.id} (${job.kind})`), fact("State", job.state),
+      fact("Exit code", job.returncode ?? "—"), fact("Started", time(job.started)));
+  }
+}
+
+async function pollStack() {
+  let data;
+  try {
+    const response = await fetch("/api/stack/status");
+    data = await response.json();
+  } catch (err) { setLight("stack", false, err.message); return; }
+  renderStack(data);
+  if (!stackUi.shown) return;
+  try {
+    const response = await fetch(`/api/stack/job/${stackUi.shown}?after=${stackUi.after}`);
+    const out = await response.json();
+    if (!out.lines) return;
+    const pre = $("st-job-out");
+    const atBottom = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 8;
+    for (const line of out.lines) { pre.append(line.text + "\n"); stackUi.after = line.seq; }
+    if (atBottom) pre.scrollTop = pre.scrollHeight;
+  } catch { /* the next poll catches up */ }
+}
+
+for (const node of document.querySelectorAll("[data-stack]")) {
+  node.addEventListener("change", () => refreshStackPreview(node.dataset.stack));
+}
+$("btn-stack-start").addEventListener("click", stackStart);
+$("btn-stack-stop").addEventListener("click", stackStop);
+$("btn-stack-cancel").addEventListener("click", async () => {
+  if (!stackUi.shown || !window.confirm(`Cancel ${stackUi.shown}? It gets SIGTERM.`)) return;
+  try { await stackPost("/cancel", { job: stackUi.shown }); } catch (err) { log(err.message, "bad"); }
+});
+$("st-job-pick").addEventListener("change", (e) => showJob(e.target.value));
+$("btn-bridge-start").addEventListener("click", () => bridgeAction("/bridge/start",
+  `Start the bridge?\n\nThis runs:\n${$("st-bridge-cmd").dataset.cmd || ""}`, "Bridge start"));
+$("btn-bridge-stop").addEventListener("click", () => bridgeAction("/bridge/stop",
+  "Stop the bridge?\n\nDocker 1 loses its link to the drones. Land any drone in the air first.",
+  "Bridge stop"));
+$("btn-bridge-install").addEventListener("click", () => bridgeAction("/bridge/install",
+  `Install or update the bridge?\n\nThis runs:\n${$("st-install-cmd").dataset.cmd || ""}\n\n` +
+  "It adds a git remote and stages api/ in the CrazySwarm2 workspace.", "Bridge install"));
+$("btn-bridge-copy").addEventListener("click", () => {
+  navigator.clipboard.writeText($("st-bridge-cmd").dataset.cmd || "").then(
+    () => log("command copied", "ok"), () => log("could not copy", "bad"));
+});
+for (const action of ["start", "stop"]) {
+  $(`btn-stack-${action}-copy`).addEventListener("click", () => {
+    navigator.clipboard.writeText($(`st-${action}-cmd`).dataset.cmd || "").then(
+      () => log("command copied", "ok"), () => log("could not copy", "bad"));
+  });
+}
+
+// ------------------------------------------------------- status: commands
+for (const key of ["btn-start", "btn-stop", "btn-reform", "btn-land", "btn-random"]) {
+  showCommand(`cmd-${key}`, REQUESTS[key]());
+}
+$("random-count").addEventListener("input", () => showCommand("cmd-btn-random", REQUESTS["btn-random"]()));
+let downShownFor = null;
+function refreshDownCommand() {
+  const first = state.drones.length ? state.drones[0].drone_id : null;
+  if (first === null || first === downShownFor) return;
+  downShownFor = first;
+  $("cmd-down-label").textContent = `Down (per drone; shown for drone ${first})`;
+  showCommand("cmd-down", downRequest(first));
+}
+setInterval(refreshDownCommand, 1000);

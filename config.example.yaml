@@ -45,6 +45,11 @@ mission:
   poll_interval: 1.0
   anchor_policy: initial_anchor
 
+  # Which way the formation faces: +y means the front row is at the top and
+  # the rows behind it step down in y; +x turns the whole shape a quarter turn
+  # so the front row is at the far +x end and the rows step back along -x.
+  front_axis: +y
+
   safety_gap: 0.25
   include_downed_in_safety: false
   waypoint_step: 0.25

@@ -122,6 +122,49 @@ def test_empty_formation_produces_no_slots():
 
 
 # --------------------------------------------------------------------------
+# front_axis: which way the formation faces
+# --------------------------------------------------------------------------
+
+
+def test_the_default_front_axis_is_plus_y():
+    """The original convention, kept so existing configs fly unchanged."""
+    assert FormationRequest().front_axis == "+y"
+    assert make_slots([1, 1], 0.5) == pytest.approx(make_slots([1, 1], 0.5, "+y"))
+
+
+def test_plus_x_front_steps_rows_back_along_x():
+    spacing = 0.5
+    slots = make_slots([1, 1, 1], spacing, "+x")
+    xs = [x for x, _ in slots]
+    ys = [y for _, y in slots]
+
+    assert xs == pytest.approx([0.0, -spacing, -2 * spacing])
+    assert ys == pytest.approx([0.0, 0.0, 0.0])
+
+
+def test_plus_x_front_spreads_a_row_along_y():
+    spacing = 0.5
+    slots = make_slots([3], spacing, "+x")
+
+    assert [x for x, _ in slots] == pytest.approx([0.0, 0.0, 0.0])
+    assert sorted(y for _, y in slots) == pytest.approx([-spacing, 0.0, spacing])
+
+
+@pytest.mark.parametrize("rows", [[1], [3], [1, 2, 3], [1, 2, 3, 2, 1]])
+def test_plus_x_is_the_plus_y_shape_turned_a_quarter_turn(rows):
+    """Same formation, different heading: swapping the coordinates of every
+    +y slot gives the +x slots, so spacing and safety gaps are unchanged."""
+    turned = [(y, x) for x, y in make_slots(rows, 0.5, "+y")]
+
+    assert sorted(turned) == sorted(tuple(slot) for slot in make_slots(rows, 0.5, "+x"))
+
+
+def test_an_unknown_front_axis_is_refused():
+    with pytest.raises(ValueError, match="front_axis"):
+        make_slots([1, 2], 0.5, "+z")
+
+
+# --------------------------------------------------------------------------
 # Defaults drift
 # --------------------------------------------------------------------------
 

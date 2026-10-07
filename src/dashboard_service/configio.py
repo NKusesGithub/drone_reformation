@@ -77,6 +77,11 @@ PARAMETERS: List[Dict[str, Any]] = [
      "read_by": "mission",
      "help": "initial_anchor keeps the first position. active_centroid re-centres on the "
              "survivors. origin puts the front row's middle at (0, 0)."},
+    {"keys": ["mission", "front_axis"], "label": "Which way the formation faces", "unit": "",
+     "type": "choice", "choices": ["+y", "+x"],
+     "read_by": "formation and hungarian, via mission",
+     "help": "+y puts the front row at the top with the rows behind it stepping down in y. "
+             "+x turns the shape a quarter turn: the front row is at the far +x end."},
     {"keys": ["mission", "include_downed_in_safety"], "label": "Avoid downed drones",
      "unit": "", "type": "bool", "read_by": "mission",
      "help": "Whether a drone on the floor still counts for the safety gap."},
