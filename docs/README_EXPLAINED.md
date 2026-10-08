@@ -178,7 +178,7 @@ steps in sequence:
 The script does **not** do these things:
 
 - **It does not start the CrazySwarm bridge** on `:8011`. You must start the bridge first.
-  Refer to [QUICKSTART Step 3](QUICKSTART.md#step-3-check-the-bridge-then-start-drone_reformation).
+  Refer to [QUICKSTART Step 3](QUICKSTART.md#step-3-start-the-bridge-then-start-drone_reformation).
 - **"Ready." does not mean that the mission is running.** It means only that each service
   answered. The `/health` route of mission gives `ok` also when its worker stopped with an
   error (§12.5). Do a check of `running` and `last_error` with
@@ -189,7 +189,7 @@ Then it removes the containers. With `--no-land` it only stops the mission loop,
 not land the drones.
 
 For the full start procedure on real drones, refer to
-[QUICKSTART Step 3](QUICKSTART.md#step-3-check-the-bridge-then-start-drone_reformation).
+[QUICKSTART Step 3](QUICKSTART.md#step-3-start-the-bridge-then-start-drone_reformation).
 
 ### The dashboard on port 8006
 

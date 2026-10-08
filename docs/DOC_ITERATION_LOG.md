@@ -4,6 +4,64 @@ Newest entry first.
 
 ---
 
+## 2026-10-08
+
+**Changed:** One focused Task A improvement. Realigned the `README.md` table of
+contents and two cross-document links with the headings that the branch's
+feature commits added or renamed. The branch carries unmerged feature work from
+the repository owner (a stack control module, a dashboard launcher, and a
+`front_axis` setting) that changed the document structure but left the
+navigation out of date.
+
+- `README.md`: the feature work added a `## What to install, and where` section
+  (with a `### What starts each part` subsection) and a `### front_axis` setting,
+  but the `## Contents` list still showed the older 10 sections and 2
+  subsections. Added the three missing entries in document order: the
+  `What to install, and where` top-level entry, its nested `What starts each
+  part` entry, and the `front_axis` entry nested under `The settings files`
+  beside `anchor_policy` and `MISSION_AUTO_START`. The `## Contents` list now
+  mirrors every `##` and `###` heading in the file.
+- `docs/README_EXPLAINED.md`: the feature work renamed the `docs/QUICKSTART.md`
+  Step 3 heading from `Check the bridge, ...` to `Start the bridge, ...` and
+  updated that document's own table of contents, but the two
+  `[QUICKSTART Step 3]` cross-links in `README_EXPLAINED.md` still pointed at the
+  old `#step-3-check-...` anchor and no longer resolved. Repointed both to the
+  current `#step-3-start-the-bridge-then-start-drone_reformation` anchor. The
+  link text is unchanged.
+- The link text reuses the existing, already-compliant heading text, so no
+  heading changed and no other link needed an update.
+- No technical content changed: no route, port, path, number, or code block was
+  touched. The anchor-fragment edit corrects a link target to match the actual
+  heading. Navigation only.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 202 passed, 1
+  xfailed. The change is documentation only. The count rose from the earlier
+  178 because the branch's feature commits added tests.
+- Internal links and anchors: a script checked every markdown link in the three
+  documents (123 internal links). The three new `README.md` TOC anchors resolve,
+  and the two repointed `README_EXPLAINED.md` cross-links now resolve against the
+  renamed `QUICKSTART.md` heading. The only unresolved links are pre-existing and
+  expected: the sibling `../../CrazySwarm2-with-Mocap` repository (not in this
+  checkout), the gitignored runtime files `../config.yaml` and `../.env`, and the
+  `#Lnnn` GitHub source line-anchors into `src/` files (these resolve on GitHub,
+  not against markdown headings). None of these come from this change.
+- ASD-STE100: the change adds only navigation links whose text reuses the
+  existing, already-compliant headings, and corrects two link anchors. No new
+  prose sentence, no gerund as a noun, no em dash, and no slash in prose.
+
+**Verdict: CONTINUE.** The navigation now matches the current document
+structure. The next run should first re-check whether the feature work on this
+branch (or later merges) added, removed, or renamed any heading, because that is
+what put the navigation out of date this time. One concrete candidate, if judged
+useful and still absent: in `README.md` the `## Services and ports` table and the
+`## Start here` fault links duplicate data that lives in the fault tables; a
+single cross-reference could replace a duplicated row. If no real, low-risk
+improvement is found, stop and record `COMPLETE: STOP`.
+
+---
+
 ## 2026-10-06
 
 **Changed:** One focused Task A improvement. Added a compact table of contents
