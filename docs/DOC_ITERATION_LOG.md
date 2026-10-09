@@ -4,6 +4,60 @@ Newest entry first.
 
 ---
 
+## 2026-10-09
+
+**Changed:** One focused Task A improvement. Expanded the `## Contents` table of
+contents in `docs/README_EXPLAINED.md` with a nested sub-list of the eleven
+`§12` trap subsections. Before this run, the Contents showed only the single
+top-level entry `12. Traps and unexpected behavior`, but §12 holds the eleven
+numbered traps (`§12.1` to `§12.11`) that the other two documents and §6, §8
+and §15 cross-reference by number. A reader who scanned the Contents could not
+see the specific trap or jump to it.
+
+- `docs/README_EXPLAINED.md`: added eleven nested entries under Contents item
+  `12`, one for each `### 12.x` heading, each a link to its section anchor. The
+  nesting (four-space indent) mirrors the pattern already in `README.md`, where
+  the `###` subsections sit under their `##` parent in the Contents. The §12
+  subsections are the only numbered subsections in the document, so they match
+  its numbered-list style.
+- The link text reuses the existing, already-compliant heading text, so no
+  heading changed and no other link needed an update. The eleven anchors were
+  computed with the GitHub slug rule; four of them (`§12.1`, `§12.5`, `§12.6`,
+  `§12.10`) are already proven by the cross-links that `docs/QUICKSTART.md`
+  uses, and the link checker confirms all eleven resolve.
+- No technical content changed: no route, port, path, number, or code block was
+  touched. Navigation only.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 202 passed, 1
+  xfailed. The change is documentation only, so the count is unchanged from the
+  last run.
+- Internal links and anchors: a script checked every markdown link in the three
+  documents (134 internal links, up from 123 for the eleven new sub-links). All
+  eleven new TOC anchors resolve, and every other in-document anchor still
+  resolves. The only unresolved links are pre-existing and expected: the sibling
+  `../../CrazySwarm2-with-Mocap` repository (not in this checkout), the
+  gitignored runtime files `../config.yaml` and `../.env`, and the `#Lnnn`
+  GitHub source line-anchors into `src/` files (these resolve on GitHub, not
+  against markdown headings). None of these come from this change.
+- ASD-STE100: the change adds only navigation links whose text reuses the
+  existing, already-compliant headings. No new prose sentence, no gerund as a
+  noun, no em dash, and no slash in prose.
+
+**Verdict: CONTINUE.** The traps section, which is the most-referenced reference
+content in the document, is now reachable from its own table of contents. The
+core navigation of Task A (a table of contents and cross-links in each of the
+three documents, plus this trap index) is now in place, so the next run is at
+the point of diminishing returns and should weigh any further Task A work
+carefully against `COMPLETE: STOP`. The next run should first re-check whether
+feature work on this branch or later merges added, removed, or renamed any
+heading, because that is the kind of drift that put the navigation out of date
+on 2026-10-08. If no real, low-risk improvement is found, stop and record
+`COMPLETE: STOP`. Do not invent work to fill a day.
+
+---
+
 ## 2026-10-08
 
 **Changed:** One focused Task A improvement. Realigned the `README.md` table of
