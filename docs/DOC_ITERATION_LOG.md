@@ -4,6 +4,63 @@ Newest entry first.
 
 ---
 
+## 2026-10-11
+
+**Changed:** One focused Task A improvement. Expanded the `## Contents` list in
+`docs/README_EXPLAINED.md` so the 11 trap subsections (§12.1 to §12.11) are
+reachable from the table of contents. This document is about 1340 lines, and §12
+("Traps and unexpected behavior") is its fault-finding reference. Its
+subsections are cited by number from `docs/QUICKSTART.md` (§12.1, §12.10) and
+from inside `README_EXPLAINED.md` itself (§12.5, §12.6), but the table of
+contents listed only the 15 top-level sections. A reader who wanted to browse a
+specific trap had to scroll.
+
+- `docs/README_EXPLAINED.md`: under item 12 of the `## Contents` list, added a
+  nested bulleted sub-list with one entry for each `### 12.x` heading, in
+  document order. Each entry links to its heading anchor. The link text reuses
+  the full heading text, so the `12.x` labels that the cross-links elsewhere use
+  stay visible.
+- The bulleted sub-list matches the pattern already in the `README.md`
+  `## Contents`, which nests its `###` subsections as bullets under their parent.
+- No heading changed and no other link needed an update. The four anchors that
+  were already proven by existing cross-links (§12.1, §12.5, §12.6, §12.10)
+  are unchanged, and the seven new anchors follow the same GitHub convention.
+- No technical content changed: no route, port, path, number, or code block was
+  touched. Navigation only.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 202 passed, 1
+  xfailed. The change is documentation only, so the count is unchanged from the
+  last run.
+- Internal links and anchors: a script checked every markdown link in the three
+  documents (134 internal links, up from 123 because of the 11 new entries). All
+  11 new sub-list anchors resolve against the real `### 12.x` headings, and every
+  other in-document anchor still resolves. The only unresolved links are
+  pre-existing and expected: the sibling `../../CrazySwarm2-with-Mocap`
+  repository (not in this checkout), the gitignored runtime files
+  `../config.yaml` and `../.env`, and the `#Lnnn` GitHub source line-anchors into
+  `src/` files (these resolve on GitHub, not against markdown headings). None of
+  these come from this change.
+- ASD-STE100: the change adds only navigation links whose text reuses the
+  existing, already-compliant `### 12.x` headings. No new prose sentence, no
+  gerund as a noun, no em dash, and no slash in prose was added. The route name
+  `/health` and the expressions `sum(old_formation)` and `len(drones.ids)` are
+  technical names inside the existing headings, kept unchanged.
+
+**Verdict: CONTINUE, but near the stop point.** The three documents now each have
+a table of contents, a cross-link to the other two, and (for the trap reference)
+direct links to each subsection. The core navigation of Task A is in place. The
+next run should weigh any further work carefully against `COMPLETE: STOP`: the
+heading structure is in sync and the cross-link triangle is complete, so a
+remaining candidate must be real, not invented. One concrete, low-risk option, if
+judged useful: `README_EXPLAINED §5` to §8 also carry several `###` subsections
+that the `## Contents` list does not reach, so the same nested-bullet treatment
+could be applied there. If no such real improvement is found, stop and record
+`COMPLETE: STOP`.
+
+---
+
 ## 2026-10-08
 
 **Changed:** One focused Task A improvement. Realigned the `README.md` table of
