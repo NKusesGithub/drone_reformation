@@ -4,6 +4,65 @@ Newest entry first.
 
 ---
 
+## 2026-10-12
+
+**Changed:** One focused Task A improvement. Nested the eleven traps of
+`docs/README_EXPLAINED.md` §12 under the `## Contents` table of contents, so a
+reader can scan and jump to one trap by its title.
+
+- First re-checked for heading drift, as the 2026-10-08 entry asked. No heading
+  was added, removed, or renamed since the last run, and every one of the 123
+  internal links still resolved before this change. So the navigation was not
+  out of date this time.
+- `docs/README_EXPLAINED.md`: §12 (`Traps and unexpected behavior`) is the
+  primary troubleshooting reference. It holds eleven numbered traps (`### 12.1`
+  to `### 12.11`), and both other documents deep-link into it by subsection
+  anchor (for example `QUICKSTART.md` points at `#121-...`, `#125-...`,
+  `#126-...` and `#1210-...`). But the `## Contents` list showed only the
+  top-level `12. Traps and unexpected behavior` entry. A reader who opened the
+  TOC, or who arrived on one `§12.x` link, could not see the other ten trap
+  titles without a scroll through about 160 lines.
+- Added a nested sub-list of the eleven `### 12.x` headings under the `12.`
+  entry, between it and `13.`. Each item links to the subsection anchor. The
+  link text reuses the existing heading text, so no heading changed and no other
+  link needed an update.
+- This selective nesting matches the pattern already in `README.md`, whose TOC
+  nests the `### front_axis`, `### anchor_policy` and `### MISSION_AUTO_START`
+  settings under `The settings files` and `What starts each part` under `What to
+  install, and where`. The §12 traps are numbered, so they nest as a natural
+  sub-list of the numbered TOC.
+- No technical content changed: no route, port, path, number, or code block was
+  touched. Navigation only.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 202 passed, 1
+  xfailed. The change is documentation only, so the count is unchanged from the
+  last run.
+- Internal links and anchors: a script checked every markdown link in the three
+  documents. The link total rose from 123 to 134, which is the eleven new TOC
+  links. All eleven resolve against the real `### 12.x` headings, and every
+  other in-document anchor still resolves. The only unresolved links are
+  pre-existing and expected: the sibling `../../CrazySwarm2-with-Mocap`
+  repository (not in this checkout), the gitignored runtime files
+  `../config.yaml` and `../.env`, and the `#Lnnn` GitHub source line-anchors
+  into `src/` files (these resolve on GitHub, not against markdown headings).
+  None of these come from this change.
+- ASD-STE100: the change adds only navigation links whose text reuses the
+  existing, already-compliant subsection headings. No new prose sentence, no
+  gerund as a noun, no em dash, and no slash in prose was added.
+
+**Verdict: CONTINUE.** This was the last clear navigation gap: the most-linked
+reference section was not browsable from the TOC, and now it is. The core of
+Task A (a table of contents and cross-links in all three documents, a `Start
+here` entry point, and an index of the traps) is now in place, so the work is at
+the point of diminishing returns. The next run should first re-check for heading
+drift from any new feature work on this branch, because a merge is what put the
+navigation out of date in the 2026-10-08 run. If no real, low-risk improvement
+is found, stop and record `COMPLETE: STOP`. Do not invent work to fill a day.
+
+---
+
 ## 2026-10-08
 
 **Changed:** One focused Task A improvement. Realigned the `README.md` table of
