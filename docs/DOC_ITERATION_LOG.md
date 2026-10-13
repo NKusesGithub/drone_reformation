@@ -4,6 +4,66 @@ Newest entry first.
 
 ---
 
+## 2026-10-13
+
+**Changed:** One focused Task A improvement, the last clear navigation gap.
+Nested the eleven `### 12.x` trap subsections under item 12 of the `## Contents`
+table of contents in `docs/README_EXPLAINED.md`. Before this, the TOC showed
+only the single top-level entry `12. Traps and unexpected behavior`, so a reader
+who opened the TOC, or who arrived on a `§12.x` deep-link, could not see or jump
+to a specific trap without scrolling about 160 lines.
+
+- `docs/README_EXPLAINED.md`: added a nested bulleted sub-list of all eleven
+  `§12.x` headings (12.1 to 12.11) under Contents item 12, each linking to its
+  subsection anchor. The four-space indent and bullet form match the pattern
+  already used in `README.md`, whose TOC nests its `###` settings subsections.
+  §12 is the most-referenced section: `docs/QUICKSTART.md` deep-links `§12.1`,
+  `§12.5`, `§12.6` and `§12.10` by number, and §6, §8 and §15 cite traps by
+  number too, so a browsable TOC of them helps a reader most here.
+- The link text reuses the existing, already-compliant heading text, so no
+  heading changed and no other link needed an update.
+- No technical content changed: no route, port, path, number, or code block was
+  touched. Navigation only.
+
+**Step 0 heading-drift re-check:** the 2026-10-08 entry asked the next run to
+first check whether the branch's feature work added, removed, or renamed a
+heading. A full link and anchor check (below) found no drift: every TOC entry
+and cross-link in the three documents still resolves against a real heading.
+
+**Checks:**
+
+- `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest -q`: 202 passed, 1
+  xfailed (unchanged; the change is documentation only). The fresh container
+  had only PyYAML, so the dev and base requirements were installed with
+  `pip install --user` first.
+- Internal links and anchors: a script checked every markdown link in the three
+  documents. The link total rose from 123 to 134 (the eleven new TOC links).
+  All eleven resolve against the real `### 12.x` headings, and every other
+  in-document anchor still resolves. The only unresolved links are pre-existing
+  and expected: the sibling `../../CrazySwarm2-with-Mocap` repository (not in
+  this checkout), the gitignored runtime files `../config.yaml` and `../.env`,
+  and the `#Lnnn` GitHub source line-anchors into `src/` files.
+- ASD-STE100: the change adds only navigation links whose text reuses the
+  existing, already-compliant headings. No new prose sentence, no gerund as a
+  noun, no em dash, and no slash in prose.
+
+**Verdict: COMPLETE: STOP.** The navigation of Task A is now complete, and more
+changes would only add risk. Each of the three documents has a table of contents
+that mirrors every one of its headings, including the nested subsections; the
+cross-link triangle between the three is in place; both fault tables are linked
+from the `README.md` entry point; and the long `README_EXPLAINED.md` debugging
+reference is now browsable by trap number. The one candidate the earlier entries
+left open is not a real improvement: the `README.md` `## Services and ports`
+table and the `docs/QUICKSTART.md` `## Layout and ports` table frame the ports
+for different readers (a host-access lookup versus a who-connects matrix), so
+replacing one with a cross-reference would make a reader jump documents for a
+basic fact and worsen traversal, not help it. No other low-risk, useful
+navigation change is left. A future run should reopen work only if the technical
+content grows and a heading, anchor, or cross-link falls out of date; the Step 0
+link-and-anchor check above is the way to find that drift.
+
+---
+
 ## 2026-10-08
 
 **Changed:** One focused Task A improvement. Realigned the `README.md` table of
